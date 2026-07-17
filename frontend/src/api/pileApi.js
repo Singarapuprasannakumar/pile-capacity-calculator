@@ -14,55 +14,72 @@ const API = axios.create({
 
 /**
  * Response interceptor – normalises every error into a human-readable message.
- * Priority order:
- *  1. FastAPI validation detail array → joined list
- *  2. Backend detail string
- *  3. Backend message string
- *  4. HTTP status text (e.g. "404 Not Found")
- *  5. Network-level message (e.g. "Backend service unavailable.")
- *  6. Generic fallback
+ * Provides detailed categorization for DevOps diagnostics:
+ *   - Connection timeout
+ *   - CORS blocked / Server offline
+ *   - Validation error
+ *   - 500 Internal Server Error
+ *   - Network unavailable
  */
 API.interceptors.response.use(
   (response) => response,
   (error) => {
-    let message = 'Backend service unavailable.';
+    let message = 'An unexpected network error occurred.';
+    let type = 'Unknown Error';
 
-    if (error.response) {
-      // Server returned a response (4xx / 5xx)
-      const data = error.response.data;
+    // 1. Check if user is offline
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      type = 'Network unavailable';
+      message = 'Your device is not connected to the internet. Please check your network connection.';
+    }
+    // 2. Server responded with a status code (4xx / 5xx)
+    else if (error.response) {
       const status = error.response.status;
+      const data = error.response.data;
 
-      if (data?.detail) {
-        // FastAPI validation errors come as an array
-        if (Array.isArray(data.detail)) {
+      if (status === 422) {
+        type = 'Validation error';
+        if (data?.detail && Array.isArray(data.detail)) {
           message = data.detail
             .map((d) => `${d.loc?.slice(1).join(' → ') ?? 'field'}: ${d.msg}`)
             .join('\n');
-        } else {
+        } else if (data?.detail) {
           message = String(data.detail);
+        } else {
+          message = 'Input data validation failed. Please check the values entered.';
         }
-      } else if (data?.message) {
-        message = String(data.message);
-      } else if (typeof data === 'string' && data.length > 0) {
-        message = data;
+      } else if (status === 500) {
+        type = '500 Internal Server Error';
+        message = 'Internal Server Error. The backend encountered an unexpected condition. Please check server logs.';
+      } else if (status === 404) {
+        type = '404 Not Found';
+        message = `Requested resource was not found. Please verify the API URL: ${API_BASE}`;
       } else {
-        message = `Server responded with ${status} ${error.response.statusText || ''}`.trim();
+        type = `HTTP ${status} Error`;
+        message = data?.detail || data?.message || error.response.statusText || 'Server responded with an error status.';
       }
-    } else if (error.request) {
-      // Request was made but no response received (network / CORS / server down)
+    }
+    // 3. Request was made but no response was received (Timeout or CORS block)
+    else if (error.request) {
       const isTimeout = error.code === 'ECONNABORTED';
       if (isTimeout) {
-        message = 'Request timed out. The backend is taking too long to respond.';
+        type = 'Connection timeout';
+        message = 'Connection timeout. The backend is taking too long to respond (exceeded 30 seconds).';
       } else {
-        message = 'Backend service unavailable.';
+        // Under standard CORS restrictions, browser blocks access to error response details,
+        // resulting in a generic network error on the frontend.
+        type = 'CORS blocked / Server offline';
+        message = 'CORS blocked or Server offline. The request was blocked by the browser CORS policy or the backend service is currently offline.';
       }
-    } else {
-      // Something went wrong setting up the request
-      message = error.message || message;
+    }
+    // 4. Request setup failure
+    else {
+      type = 'Request configuration error';
+      message = error.message || 'Failed to setup request parameters.';
     }
 
-    // Attach the human-readable message so components can display it directly
-    error.friendlyMessage = message;
+    // Wrap the error with full diagnostic detail
+    error.friendlyMessage = `[${type}] ${message}`;
     return Promise.reject(error);
   }
 );

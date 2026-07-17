@@ -178,36 +178,74 @@ app = FastAPI(
 
 # CORS configuration
 origins_env = os.getenv("ALLOWED_ORIGINS", "")
-allowed_origins = [
+env_origins = [
     origin.strip().rstrip("/")
     for origin in origins_env.split(",")
     if origin.strip()
 ]
 
-if not allowed_origins:
-    allowed_origins = [
-        "http://localhost:5173",
-        "https://pile-capacity-calculator.vercel.app"
-    ]
+# Standard local development and default production origins
+default_origins = [
+    "http://localhost:5173",
+    "http://localhost:3000",
+    "http://localhost:8080",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+    "https://pile-capacity-calculator.vercel.app"
+]
+
+allowed_origins = list(set(default_origins + env_origins))
+allowed_origin_regex = r"https://.*\.vercel\.app"
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=allowed_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Startup information logging
+# Startup diagnostics logging and CORS self-test
+def run_cors_self_test():
+    import re
+    print("=" * 60)
+    print("PILE CAPACITY API - STARTUP DIAGNOSTICS & CORS SELF-TEST")
+    backend_url = os.getenv("RENDER_EXTERNAL_URL", "http://localhost:8000")
+    print(f"Backend URL:          {backend_url}")
+    print(f"Allowed Origins:      {allowed_origins}")
+    print(f"Allowed Origin Regex: {allowed_origin_regex}")
+    print(f"Environment Variables: ALLOWED_ORIGINS={os.getenv('ALLOWED_ORIGINS')}")
+    print("-" * 60)
+    
+    test_origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "https://pile-capacity-calculator.vercel.app",
+        "https://pile-capacity-calculator-eight.vercel.app",
+        "https://pile-cap-git-xxxxxxxx.vercel.app",
+        "https://some-unauthorized-domain.com"
+    ]
+    
+    compiled_regex = re.compile(allowed_origin_regex) if allowed_origin_regex else None
+    
+    for origin in test_origins:
+        matched_explicit = origin in allowed_origins
+        matched_regex = bool(compiled_regex.fullmatch(origin)) if compiled_regex else False
+        is_allowed = matched_explicit or matched_regex
+        status = "ALLOWED" if is_allowed else "DENIED"
+        details = []
+        if matched_explicit: details.append("explicit list")
+        if matched_regex:    details.append("regex match")
+        details_str = f" ({', '.join(details)})" if details else ""
+        print(f"Origin: {origin:<50} -> {status}{details_str}")
+        
+    print("Loaded successfully.")
+    print("=" * 60)
+
 @app.on_event("startup")
 def startup_event():
-    backend_url = os.getenv("RENDER_EXTERNAL_URL", "http://localhost:8000")
-    print("=" * 60)
-    print("PILE CAPACITY API - STARTUP METADATA")
-    print(f"Backend External URL: {backend_url}")
-    print(f"Allowed CORS Origins: {allowed_origins}")
-    print(f"Environment Config:   ALLOWED_ORIGINS={os.getenv('ALLOWED_ORIGINS')}")
-    print("=" * 60)
+    run_cors_self_test()
 
 
 @app.get("/", summary="Root endpoint")
