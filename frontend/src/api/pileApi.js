@@ -6,23 +6,42 @@ if (API_BASE && API_BASE !== '/api') {
   API_BASE = API_BASE.replace(/\/$/, '');
 }
 
+// Log the resolved API base URL during startup
+console.log("API Base URL:", import.meta.env.VITE_API_URL);
+
 const API = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
   timeout: 30000,
 });
 
-/**
- * Response interceptor – normalises every error into a human-readable message.
- * Provides detailed categorization for DevOps diagnostics:
- *   - Connection timeout
- *   - CORS blocked / Server offline
- *   - Validation error
- *   - 500 Internal Server Error
- *   - Network unavailable
- */
+// Request logging interceptor
+API.interceptors.request.use(
+  (config) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'unknown';
+    console.log(">>> API Request:", {
+      url: `${config.baseURL || ''}${config.url}`,
+      origin: origin,
+      payload: config.data
+    });
+    return config;
+  },
+  (error) => {
+    console.error(">>> API Request Setup Error:", error);
+    return Promise.reject(error);
+  }
+);
+
+// Response logging interceptor
 API.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    console.log("<<< API Response:", {
+      status: response.status,
+      headers: response.headers,
+      body: response.data
+    });
+    return response;
+  },
   (error) => {
     let message = 'An unexpected network error occurred.';
     let type = 'Unknown Error';
@@ -36,6 +55,12 @@ API.interceptors.response.use(
     else if (error.response) {
       const status = error.response.status;
       const data = error.response.data;
+
+      console.log("<<< API Response Error:", {
+        status: status,
+        headers: error.response.headers,
+        body: data
+      });
 
       if (status === 422) {
         type = 'Validation error';
@@ -62,12 +87,12 @@ API.interceptors.response.use(
     // 3. Request was made but no response was received (Timeout or CORS block)
     else if (error.request) {
       const isTimeout = error.code === 'ECONNABORTED';
+      console.log("<<< API Response Error (No Response):", error.message);
+      
       if (isTimeout) {
         type = 'Connection timeout';
         message = 'Connection timeout. The backend is taking too long to respond (exceeded 30 seconds).';
       } else {
-        // Under standard CORS restrictions, browser blocks access to error response details,
-        // resulting in a generic network error on the frontend.
         type = 'CORS blocked / Server offline';
         message = 'CORS blocked or Server offline. The request was blocked by the browser CORS policy or the backend service is currently offline.';
       }
