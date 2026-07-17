@@ -164,32 +164,50 @@ def calc_sand_tip(tip: SandTip, area: float) -> float:
 
 import os
 
+from fastapi.openapi.docs import get_swagger_ui_html
+
 # ─── FastAPI App ──────────────────────────────────────────────────────────────
 
 app = FastAPI(
     title="Pile Capacity Calculator API",
     description="Computes shaft resistance, end bearing, ultimate and allowable pile capacity.",
     version="1.0.0",
+    docs_url=None,   # Disable default docs to override with cdnjs
+    redoc_url=None,  # Disable default redoc
 )
 
 # CORS configuration
-allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")
-if allowed_origins_env:
-    origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
-else:
-    # Safe default origins for development and production
-    origins = [
+origins_env = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = [
+    origin.strip()
+    for origin in origins_env.split(",")
+    if origin.strip()
+]
+
+if not allowed_origins:
+    allowed_origins = [
         "http://localhost:5173",
         "https://pile-capacity-calculator.vercel.app"
     ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Startup information logging
+@app.on_event("startup")
+def startup_event():
+    backend_url = os.getenv("RENDER_EXTERNAL_URL", "http://localhost:8000")
+    print("=" * 60)
+    print("PILE CAPACITY API - STARTUP METADATA")
+    print(f"Backend External URL: {backend_url}")
+    print(f"Allowed CORS Origins: {allowed_origins}")
+    print(f"Environment Config:   ALLOWED_ORIGINS={os.getenv('ALLOWED_ORIGINS')}")
+    print("=" * 60)
 
 
 @app.get("/", summary="Root endpoint")
@@ -204,6 +222,17 @@ def health():
         "service": "Pile Capacity API",
         "version": "1.0.0"
     }
+
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - Swagger UI",
+        oauth2_redirect_url=app.swagger_ui_oauth2_redirect_url,
+        swagger_js_url="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.9.0/swagger-ui-bundle.js",
+        swagger_css_url="https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.9.0/swagger-ui.css",
+    )
 
 
 @app.post("/calculate", response_model=CalculateResponse, summary="Calculate pile capacity")
