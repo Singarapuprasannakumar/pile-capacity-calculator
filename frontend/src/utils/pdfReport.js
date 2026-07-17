@@ -188,49 +188,78 @@ export function generatePDF(formData, results) {
   doc.text('3. Layer-wise Shaft Resistance', margin, y);
   y += 5;
 
+  const hasClay = layerResults.some(lr => lr.soilType?.toLowerCase() === 'clay');
+  const hasSand = layerResults.some(lr => lr.soilType?.toLowerCase() === 'sand');
+
+  const showClay = hasClay;
+  const showSand = hasSand;
+
+  const headRow = ['Layer', 'Soil Type', 'Thick.', 'Method'];
+  if (showClay) headRow.push('Clay Skin Friction');
+  if (showSand) headRow.push('Sand Skin Friction');
+  headRow.push('Shaft Resistance');
+
   const resultRows = layerResults.map((lr, i) => {
     const orig = layers[i] || {};
     const ld = (parseFloat(orig.thickness) || 0) / d;
     const method = lr.soilType === 'clay' ? METHOD.clay : ld < 15 ? METHOD.sandLow : METHOD.sandHigh;
-    return [
+
+    const row = [
       `${lr.layer ?? (i + 1)}`,
       lr.soilType ? lr.soilType.charAt(0).toUpperCase() + lr.soilType.slice(1) : '—',
       `${lr.thickness ?? '—'} m`,
       method,
-      lr.soilType === 'clay' ? `${fmt(lr.skinFrictionClay ?? lr.shaftResistance)} kN` : '—',
-      lr.soilType === 'sand' ? `${fmt(lr.skinFrictionSand ?? lr.shaftResistance)} kN` : '—',
-      `${fmt(lr.shaftResistance)} kN`,
     ];
+    if (showClay) {
+      row.push(lr.soilType === 'clay' ? `${fmt(lr.skinFrictionClay ?? lr.shaftResistance)} kN` : '');
+    }
+    if (showSand) {
+      row.push(lr.soilType === 'sand' ? `${fmt(lr.skinFrictionSand ?? lr.shaftResistance)} kN` : '');
+    }
+    row.push(`${fmt(lr.shaftResistance)} kN`);
+    return row;
   });
 
   const totalClaySF = layerResults.reduce((s, lr) => s + (lr.skinFrictionClay ?? 0), 0);
   const totalSandSF = layerResults.reduce((s, lr) => s + (lr.skinFrictionSand ?? 0), 0);
 
   // Total row
-  resultRows.push([
-    '', '', '',
-    'TOTALS  (ΣQs)',
-    totalClaySF > 0 ? `${fmt(totalClaySF)} kN` : '—',
-    totalSandSF > 0 ? `${fmt(totalSandSF)} kN` : '—',
-    `${fmt(totalQs)} kN`,
-  ]);
+  const totalRow = ['', '', '', 'TOTALS  (ΣQs)'];
+  if (showClay) {
+    totalRow.push(totalClaySF > 0 ? `${fmt(totalClaySF)} kN` : '0.000 kN');
+  }
+  if (showSand) {
+    totalRow.push(totalSandSF > 0 ? `${fmt(totalSandSF)} kN` : '0.000 kN');
+  }
+  totalRow.push(`${fmt(totalQs)} kN`);
+  resultRows.push(totalRow);
+
+  // Column styles mapping
+  const colStyles = {
+    0: { halign: 'center', cellWidth: 12 },
+    1: { fontStyle: 'bold', cellWidth: 20 },
+    2: { halign: 'center', cellWidth: 16 },
+  };
+  let colIndex = 4;
+  if (showClay) {
+    colStyles[colIndex] = { halign: 'right' };
+    colIndex++;
+  }
+  if (showSand) {
+    colStyles[colIndex] = { halign: 'right' };
+    colIndex++;
+  }
+  colStyles[colIndex] = { halign: 'right', fontStyle: 'bold' };
 
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
-    head: [['Layer', 'Soil Type', 'Thick.', 'Method', 'Clay Skin Friction', 'Sand Skin Friction', 'Shaft Resistance']],
+    head: [headRow],
     body: resultRows,
     styles: { fontSize: 8, cellPadding: 2.5, textColor: DARK },
     headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
     alternateRowStyles: { fillColor: LIGHT_GRAY },
-    columnStyles: {
-      0: { halign: 'center', cellWidth: 12 },
-      1: { fontStyle: 'bold', cellWidth: 20 },
-      2: { halign: 'center', cellWidth: 16 },
-      4: { halign: 'right' },
-      5: { halign: 'right' },
-      6: { halign: 'right', fontStyle: 'bold' },
-    },
+    columnStyles: colStyles,
     didParseCell: (data) => {
       if (data.row.index === resultRows.length - 1) {
         data.cell.styles.fillColor = LIGHT_BLUE;
