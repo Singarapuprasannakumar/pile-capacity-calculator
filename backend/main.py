@@ -122,8 +122,8 @@ class ClayTip(BaseModel):
 
 class SandTip(BaseModel):
     soilType: Literal["sand"]
-    overburden: float = Field(..., ge=0, description="Effective overburden at pile tip (kN/m²)")
-    nq: Optional[float] = Field(None, description="Bearing capacity factor Nq (automatically calculated)")
+    overburden: float = Field(..., gt=0, description="Effective overburden at pile tip (kN/m²)")
+    nq: float = Field(..., gt=0, description="Bearing capacity factor Nq")
 
 
 class CalculateRequest(BaseModel):
@@ -464,7 +464,7 @@ def validate_inputs(diameter: float, layers: List[dict], tip: dict):
             raise HTTPException(status_code=422, detail="Pile tip (Clay) cohesion must be greater than 0.")
     elif tip_type == "sand":
         overburden = tip.get("overburden")
-        if overburden is None:
+        if overburden is None or overburden == "":
             raise HTTPException(status_code=422, detail="Pile tip (Sand) overburden is required.")
         try:
             overburden_val = float(overburden)
@@ -474,13 +474,14 @@ def validate_inputs(diameter: float, layers: List[dict], tip: dict):
             raise HTTPException(status_code=422, detail="Pile tip (Sand) overburden must be greater than 0.")
 
         nq = tip.get("nq")
-        if nq is not None:
-            try:
-                nq_val = float(nq)
-            except ValueError:
-                raise HTTPException(status_code=422, detail="Pile tip (Sand) Nq must be a numeric value.")
-            if nq_val <= 0:
-                raise HTTPException(status_code=422, detail="Pile tip (Sand) Nq must be greater than 0.")
+        if nq is None or nq == "":
+            raise HTTPException(status_code=422, detail="Pile tip (Sand) Nq is required.")
+        try:
+            nq_val = float(nq)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Pile tip (Sand) Nq must be a numeric value.")
+        if nq_val <= 0:
+            raise HTTPException(status_code=422, detail="Pile tip (Sand) Nq must be greater than 0.")
     else:
         raise HTTPException(status_code=422, detail=f"Pile tip: Unknown soil type '{tip_type}'.")
 
@@ -736,13 +737,10 @@ def calculate(req: CalculateRequest):
             raise HTTPException(status_code=422, detail=f"Pile tip (Sand) parsing: {e}")
         
         tip_overburden_val = tip.overburden
+        computed_nq = tip.nq
         
-        if tip.nq is not None:
-            computed_nq = tip.nq
-        else:
-            last_layer = req.layers[-1]
-            phi_tip = float(last_layer.get("phi", 30))
-            computed_nq = calculate_nq(phi_tip)
+        last_layer = req.layers[-1]
+        phi_tip = float(last_layer.get("phi", 30))
         
         qp = calculate_sand_tip(tip_overburden_val, computed_nq, area)
         
