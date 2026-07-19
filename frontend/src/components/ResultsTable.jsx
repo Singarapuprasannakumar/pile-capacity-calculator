@@ -22,6 +22,9 @@ const COL = {
   claySF:    { w: 160, align: 'right'  },
   sandSF:    { w: 160, align: 'right'  },
   qs:        { w: 130, align: 'right'  },
+  qp:        { w: 130, align: 'right'  },
+  qu:        { w: 130, align: 'right'  },
+  qa:        { w: 130, align: 'right'  },
 };
 
 const METHOD_LABEL = {
@@ -76,7 +79,7 @@ const S = {
     whiteSpace: 'nowrap',
     verticalAlign: 'middle',
   }),
-  tdTotal: (align, isLast) => ({
+  tdTotal: (align, isLast, thickTop = false) => ({
     padding: '0 10px',
     height: '42px',
     background: '#EEF4FF',
@@ -84,7 +87,7 @@ const S = {
     fontSize: '14px',
     fontWeight: 600,
     textAlign: align,
-    borderTop: '2px solid #BFDBFE',
+    borderTop: thickTop ? '2px solid #BFDBFE' : '1px solid #D1D5DB',
     borderBottom: '1px solid #D1D5DB',
     borderRight: isLast ? 'none' : '1px solid #D1D5DB',
     whiteSpace: 'nowrap',
@@ -100,7 +103,7 @@ const HoverStyle = () => (
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
-const ResultsTable = ({ layerResults = [], layers = [], diameter }) => {
+const ResultsTable = ({ layerResults = [], layers = [], diameter, Qp = 0, Qu = 0, Qa = 0 }) => {
   const d = parseFloat(diameter) || 1;
 
   // Determine dynamic column visibility
@@ -115,13 +118,13 @@ const ResultsTable = ({ layerResults = [], layers = [], diameter }) => {
   const tableWidth = COL.layer.w + COL.soilType.w + COL.thickness.w + COL.method.w 
                    + (showClay ? COL.claySF.w : 0) 
                    + (showSand ? COL.sandSF.w : 0) 
-                   + COL.qs.w;
+                   + COL.qs.w + COL.qp.w + COL.qu.w + COL.qa.w;
 
   const totalQs     = layerResults.reduce((s, lr) => s + (lr.shaftResistance  ?? 0), 0);
   const totalClaySF = layerResults.reduce((s, lr) => s + (lr.skinFrictionClay ?? 0), 0);
   const totalSandSF = layerResults.reduce((s, lr) => s + (lr.skinFrictionSand ?? 0), 0);
 
-  const activeColsCount = 4 + (showClay ? 1 : 0) + (showSand ? 1 : 0) + 1;
+  const activeColsCount = 4 + (showClay ? 1 : 0) + (showSand ? 1 : 0) + 1 + 3;
 
   return (
     <div style={S.wrapper} id="results-table">
@@ -137,6 +140,9 @@ const ResultsTable = ({ layerResults = [], layers = [], diameter }) => {
           {showClay && <col style={{ width: COL.claySF.w }} />}
           {showSand && <col style={{ width: COL.sandSF.w }} />}
           <col style={{ width: COL.qs.w        }} />
+          <col style={{ width: COL.qp.w        }} />
+          <col style={{ width: COL.qu.w        }} />
+          <col style={{ width: COL.qa.w        }} />
         </colgroup>
 
         {/* Header */}
@@ -148,7 +154,10 @@ const ResultsTable = ({ layerResults = [], layers = [], diameter }) => {
             <th style={S.th('left', false)}>Method</th>
             {showClay && <th style={S.th('right', false)}>Skin Friction Clay (kN)</th>}
             {showSand && <th style={S.th('right', false)}>Skin Friction Sand (kN)</th>}
-            <th style={S.th('right', true)}>Qs (kN)</th>
+            <th style={S.th('right', false)}>Qs (kN)</th>
+            <th style={S.th('right', false)}>Qp (kN)</th>
+            <th style={S.th('right', false)}>Qu (kN)</th>
+            <th style={S.th('right', true)}>Qa (kN)</th>
           </tr>
         </thead>
 
@@ -174,11 +183,11 @@ const ResultsTable = ({ layerResults = [], layers = [], diameter }) => {
                 : ld < 15              ? METHOD_LABEL.sandLow
                 :                        METHOD_LABEL.sandHigh;
 
-              const isClay = lr.soilType === 'clay';
-              const isSand = lr.soilType === 'sand';
+              const isClay = lr.soilType?.toLowerCase() === 'clay';
+              const isSand = lr.soilType?.toLowerCase() === 'sand';
 
-              const claySFval = isClay ? f3(lr.skinFrictionClay ?? lr.shaftResistance) : '';
-              const sandSFval = isSand ? f3(lr.skinFrictionSand ?? lr.shaftResistance) : '';
+              const claySFval = isClay ? f3(lr.skinFrictionClay ?? lr.shaftResistance) : '—';
+              const sandSFval = isSand ? f3(lr.skinFrictionSand ?? lr.shaftResistance) : '—';
 
               return (
                 <tr key={i} className="eng-row">
@@ -200,8 +209,17 @@ const ResultsTable = ({ layerResults = [], layers = [], diameter }) => {
                       {sandSFval}
                     </td>
                   )}
-                  <td style={S.td('right', true)}>
+                  <td style={S.td('right', false)}>
                     <strong>{f3(lr.shaftResistance)}</strong>
+                  </td>
+                  <td style={S.td('right', false)}>
+                    {f3(Qp)}
+                  </td>
+                  <td style={S.td('right', false)}>
+                    {f3(Qu)}
+                  </td>
+                  <td style={S.td('right', true)}>
+                    {f3(Qa)}
                   </td>
                 </tr>
               );
@@ -212,49 +230,28 @@ const ResultsTable = ({ layerResults = [], layers = [], diameter }) => {
         {/* Footer */}
         <tfoot>
           <tr>
-            <td style={S.tdTotal('center', false)} colSpan={4}>Totals</td>
+            <td style={S.tdTotal('center', false, true)} colSpan={4}>Totals</td>
             {showClay && (
-              <td style={S.tdTotal('right', false)}>
+              <td style={S.tdTotal('right', false, true)}>
                 {totalClaySF > 0 ? f3(totalClaySF) : '0.000'}
               </td>
             )}
             {showSand && (
-              <td style={S.tdTotal('right', false)}>
+              <td style={S.tdTotal('right', false, true)}>
                 {totalSandSF > 0 ? f3(totalSandSF) : '0.000'}
               </td>
             )}
-            <td style={S.tdTotal('right', true)}>
+            <td style={S.tdTotal('right', false, true)}>
               {f3(totalQs)}
             </td>
-          </tr>
-
-          {/* Sub-label definitions */}
-          <tr>
-            <td
-              colSpan={4}
-              style={{
-                padding: '4px 10px',
-                background: '#EEF4FF',
-                fontSize: '11px',
-                color: '#6B7280',
-                textAlign: 'right',
-                borderRight: '1px solid #D1D5DB',
-              }}
-            >
-              Total Shaft Resistance (ΣQs)
+            <td style={S.tdTotal('right', false, true)}>
+              {f3(Qp)}
             </td>
-            {showClay && (
-              <td style={{ padding: '4px 10px', background: '#EEF4FF', fontSize: '11px', color: '#6B7280', textAlign: 'right', borderRight: '1px solid #D1D5DB' }}>
-                ΣQs (Clay)
-              </td>
-            )}
-            {showSand && (
-              <td style={{ padding: '4px 10px', background: '#EEF4FF', fontSize: '11px', color: '#6B7280', textAlign: 'right', borderRight: '1px solid #D1D5DB' }}>
-                ΣQs (Sand)
-              </td>
-            )}
-            <td style={{ padding: '4px 10px', background: '#EEF4FF', fontSize: '11px', color: '#6B7280', textAlign: 'right' }}>
-              {showClay && showSand ? 'ΣQs_c + ΣQs_s' : showClay ? 'ΣQs_c' : 'ΣQs_s'}
+            <td style={S.tdTotal('right', false, true)}>
+              {f3(Qu)}
+            </td>
+            <td style={S.tdTotal('right', true, true)}>
+              {f3(Qa)}
             </td>
           </tr>
         </tfoot>

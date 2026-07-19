@@ -1,175 +1,92 @@
+import React from 'react';
+
+const fmt = (v) =>
+  typeof v === 'number' ? v.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 }) : v;
+
 /**
- * Results panel – displays per-layer shaft resistance cards + summary card.
- * Props:
- *  - results : { layerResults: [], Qp: number, Qu: number, Qa: number }
+ * SummaryStrip Component
+ * Displays: Clay ΣQs + Sand ΣQs = Total ΣQs in a premium engineering layout.
  */
-const ResultsPanel = ({ results }) => {
-  const { layerResults = [], Qp = 0, Qu = 0, Qa = 0 } = results;
-
-  const fmt = (v) =>
-    typeof v === 'number' ? v.toLocaleString('en-IN', { maximumFractionDigits: 3 }) : v;
-
+export const SummaryStrip = ({ layerResults = [] }) => {
   const totalQs = layerResults.reduce((s, lr) => s + (lr.shaftResistance ?? 0), 0);
   const totalClaySF = layerResults.reduce((s, lr) => s + (lr.skinFrictionClay ?? 0), 0);
   const totalSandSF = layerResults.reduce((s, lr) => s + (lr.skinFrictionSand ?? 0), 0);
 
-  const soilColors = {
-    clay: {
-      bg: 'bg-amber-50',
-      border: 'border-amber-200',
-      badge: 'bg-amber-100 text-amber-700',
-      icon: '🏔',
-    },
-    sand: {
-      bg: 'bg-yellow-50',
-      border: 'border-yellow-200',
-      badge: 'bg-yellow-100 text-yellow-700',
-      icon: '🏜',
-    },
-  };
-
   return (
-    <div className="flex flex-col gap-6 animate-slide-up">
-      {/* Title */}
-      <div className="flex items-center gap-2">
-        <div className="w-1 h-6 rounded bg-primary-500" />
-        <h2 className="text-lg font-bold text-slate-800">Calculation Results</h2>
+    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col md:flex-row items-center justify-around gap-4 shadow-sm">
+      {/* Clay ΣQs */}
+      <div className="text-center flex-1">
+        <p className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-1">Clay ΣQs</p>
+        <p className="text-2xl font-black text-amber-800">{fmt(totalClaySF)} <span className="text-xs font-medium text-amber-600">kN</span></p>
       </div>
 
-      {/* Layer Results */}
-      {layerResults.length > 0 && (
-        <div className="flex flex-col gap-4">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
-            Shaft Resistance — Per Layer
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-            {layerResults.map((lr, i) => {
-              const c = soilColors[lr.soilType] || soilColors.sand;
-              return (
-                <div
-                  key={i}
-                  className={`result-card ${c.bg} ${c.border} border`}
-                  style={{ animationDelay: `${i * 80}ms` }}
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                      Layer {lr.layer ?? (i + 1)}
-                    </span>
-                    <span className={`badge ${c.badge}`}>
-                      {c.icon} {lr.soilType || '—'}
-                    </span>
-                  </div>
-                  <div className="text-2xl font-extrabold text-slate-800 mb-1">
-                    {fmt(lr.shaftResistance)}{' '}
-                    <span className="text-sm font-normal text-slate-500">kN</span>
-                  </div>
-                  <p className="text-xs text-slate-500">Shaft Resistance (Qs)</p>
-                  {/* Split friction sub-line */}
-                  {lr.soilType === 'clay' && lr.skinFrictionClay !== undefined && (
-                    <p className="text-xs text-amber-600 mt-1.5 font-medium">
-                      Clay Skin Friction: {fmt(lr.skinFrictionClay)} kN
-                    </p>
-                  )}
-                  {lr.soilType === 'sand' && lr.skinFrictionSand !== undefined && (
-                    <p className="text-xs text-yellow-600 mt-1.5 font-medium">
-                      Sand Skin Friction: {fmt(lr.skinFrictionSand)} kN
-                    </p>
-                  )}
-                  {lr.thickness !== undefined && (
-                    <p className="text-xs text-slate-400 mt-1">Thickness: {lr.thickness} m</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* Operator + */}
+      <div className="text-slate-400 font-light text-2xl select-none">+</div>
 
-      {/* Summary */}
-      <div className="flex flex-col gap-4">
-        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
-          Summary
-        </h3>
-
-        {/* ΣQs breakdown chip row */}
-        <div className="flex flex-wrap gap-3">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-50 border border-amber-200">
-            <span className="text-xs font-semibold text-amber-600">Clay ΣQs</span>
-            <span className="text-sm font-extrabold text-amber-800 tabular-nums">{fmt(totalClaySF)} kN</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-2 text-slate-400">
-            <span className="text-lg font-light">+</span>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-yellow-50 border border-yellow-200">
-            <span className="text-xs font-semibold text-yellow-600">Sand ΣQs</span>
-            <span className="text-sm font-extrabold text-yellow-800 tabular-nums">{fmt(totalSandSF)} kN</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-2 text-slate-400">
-            <span className="text-lg font-light">=</span>
-          </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary-50 border border-primary-200">
-            <span className="text-xs font-semibold text-primary-600">Total ΣQs</span>
-            <span className="text-sm font-extrabold text-primary-800 tabular-nums">{fmt(totalQs)} kN</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* End Bearing */}
-          <div className="result-card bg-primary-50 border border-primary-200 text-center">
-            <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center mx-auto mb-3">
-              <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-            <p className="text-xs font-semibold text-primary-600 uppercase tracking-wide mb-1">
-              End Bearing
-            </p>
-            <p className="text-2xl font-extrabold text-primary-800">
-              {fmt(Qp)}
-            </p>
-            <p className="text-xs text-primary-500 mt-1">Qp (kN)</p>
-          </div>
-
-          {/* Ultimate Capacity */}
-          <div className="result-card bg-slate-800 border border-slate-700 text-center">
-            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center mx-auto mb-3">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
-            </div>
-            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">
-              Ultimate Capacity
-            </p>
-            <p className="text-2xl font-extrabold text-white">
-              {fmt(Qu)}
-            </p>
-            <p className="text-xs text-slate-400 mt-1">Qu (kN)</p>
-          </div>
-
-          {/* Allowable Capacity */}
-          <div className="result-card bg-green-50 border border-green-200 text-center">
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
-              <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <p className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-1">
-              Allowable Capacity
-            </p>
-            <p className="text-2xl font-extrabold text-green-800">
-              {fmt(Qa)}
-            </p>
-            <p className="text-xs text-green-500 mt-1">Qa (kN)</p>
-          </div>
-        </div>
+      {/* Sand ΣQs */}
+      <div className="text-center flex-1">
+        <p className="text-xs font-semibold text-orange-600 uppercase tracking-wider mb-1">Sand ΣQs</p>
+        <p className="text-2xl font-black text-orange-800">{fmt(totalSandSF)} <span className="text-xs font-medium text-orange-600">kN</span></p>
       </div>
 
-      {/* Footer note */}
-      <p className="text-xs text-slate-400 text-center">
-        Qu = Σ Qs + Qp &nbsp;|&nbsp; Qa = Qu / FOS &nbsp;|&nbsp; Results are for design reference only.
-      </p>
+      {/* Operator = */}
+      <div className="text-slate-400 font-light text-2xl select-none">=</div>
+
+      {/* Total ΣQs */}
+      <div className="text-center flex-1 bg-white border border-primary-100 rounded-lg p-2.5 shadow-sm">
+        <p className="text-xs font-bold text-primary-600 uppercase tracking-wider mb-1">Total ΣQs (Shaft)</p>
+        <p className="text-2xl font-black text-primary-800">{fmt(totalQs)} <span className="text-xs font-medium text-primary-600">kN</span></p>
+      </div>
     </div>
   );
 };
 
-export default ResultsPanel;
+/**
+ * CapacityCards Component
+ * Displays Qp (End Bearing), Qu (Ultimate Capacity), and Qa (Allowable Capacity).
+ */
+export const CapacityCards = ({ Qp = 0, Qu = 0, Qa = 0 }) => {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        {/* End Bearing Card */}
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm text-center flex flex-col justify-between">
+          <div>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">End Bearing</p>
+            <p className="text-xs text-slate-400 mb-3">Qp (kN)</p>
+          </div>
+          <p className="text-3xl font-black text-slate-800 tracking-tight">
+            {fmt(Qp)}
+          </p>
+        </div>
+
+        {/* Ultimate Capacity Card */}
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-md text-center flex flex-col justify-between text-white">
+          <div>
+            <p className="text-xs font-bold text-primary-400 uppercase tracking-wider mb-1">Ultimate Capacity</p>
+            <p className="text-xs text-slate-400 mb-3">Qu (kN)</p>
+          </div>
+          <p className="text-3xl font-black text-white tracking-tight">
+            {fmt(Qu)}
+          </p>
+        </div>
+
+        {/* Allowable Capacity Card */}
+        <div className="bg-green-50 border border-green-200 rounded-xl p-5 shadow-sm text-center flex flex-col justify-between">
+          <div>
+            <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">Allowable Capacity</p>
+            <p className="text-xs text-green-500 mb-3">Qa (kN)</p>
+          </div>
+          <p className="text-3xl font-black text-green-800 tracking-tight">
+            {fmt(Qa)}
+          </p>
+        </div>
+      </div>
+
+      {/* Formula note below the cards */}
+      <p className="text-xs text-slate-400 text-center mt-2 select-none">
+        Qu = ΣQs + Qp &nbsp;·&nbsp; Qa = Qu / FOS &nbsp;·&nbsp; Results are for design reference only.
+      </p>
+    </div>
+  );
+};

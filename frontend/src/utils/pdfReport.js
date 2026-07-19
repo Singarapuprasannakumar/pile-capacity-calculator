@@ -175,9 +175,11 @@ export function generatePDF(formData, results) {
 
   y = doc.lastAutoTable.finalY + 8;
 
-  // ── Section 3: Layer-wise Results ─────────────────────────────────────────
-  // Check if we need a new page
-  if (y > pageH - 80) {
+  // ── Section 3: Summary Breakdown (ΣQs) ─────────────────────────────────────
+  const totalClaySF = layerResults.reduce((s, lr) => s + (lr.skinFrictionClay ?? 0), 0);
+  const totalSandSF = layerResults.reduce((s, lr) => s + (lr.skinFrictionSand ?? 0), 0);
+
+  if (y > pageH - 45) {
     doc.addPage();
     y = margin;
   }
@@ -185,95 +187,46 @@ export function generatePDF(formData, results) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(...DARK);
-  doc.text('3. Layer-wise Shaft Resistance', margin, y);
+  doc.text('3. Summary Breakdown (ΣQs)', margin, y);
   y += 5;
 
-  const hasClay = layerResults.some(lr => lr.soilType?.toLowerCase() === 'clay');
-  const hasSand = layerResults.some(lr => lr.soilType?.toLowerCase() === 'sand');
+  const stripW = contentW;
+  const stripH = 14;
+  doc.setFillColor(248, 250, 252); // bg-slate-50
+  doc.roundedRect(margin, y, stripW, stripH, 2, 2, 'F');
+  doc.setDrawColor(226, 232, 240); // border-slate-200
+  doc.roundedRect(margin, y, stripW, stripH, 2, 2, 'S');
 
-  const showClay = hasClay;
-  const showSand = hasSand;
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  // Clay ΣQs
+  doc.setTextColor(146, 64, 14); // amber-800
+  doc.text(`Clay ΣQs: ${fmt(totalClaySF)} kN`, margin + 8, y + 9);
 
-  const headRow = ['Layer', 'Soil Type', 'Thick.', 'Method'];
-  if (showClay) headRow.push('Clay Skin Friction');
-  if (showSand) headRow.push('Sand Skin Friction');
-  headRow.push('Shaft Resistance');
+  // Plus
+  doc.setTextColor(148, 163, 184); // slate-400
+  doc.setFont('helvetica', 'normal');
+  doc.text('+', margin + stripW / 3 - 2, y + 9);
 
-  const resultRows = layerResults.map((lr, i) => {
-    const orig = layers[i] || {};
-    const ld = (parseFloat(orig.thickness) || 0) / d;
-    const method = lr.soilType === 'clay' ? METHOD.clay : ld < 15 ? METHOD.sandLow : METHOD.sandHigh;
+  // Sand ΣQs
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(120, 53, 15); // orange-800
+  doc.text(`Sand ΣQs: ${fmt(totalSandSF)} kN`, margin + stripW / 3 + 12, y + 9);
 
-    const row = [
-      `${lr.layer ?? (i + 1)}`,
-      lr.soilType ? lr.soilType.charAt(0).toUpperCase() + lr.soilType.slice(1) : '—',
-      `${lr.thickness ?? '—'} m`,
-      method,
-    ];
-    if (showClay) {
-      row.push(lr.soilType === 'clay' ? `${fmt(lr.skinFrictionClay ?? lr.shaftResistance)} kN` : '');
-    }
-    if (showSand) {
-      row.push(lr.soilType === 'sand' ? `${fmt(lr.skinFrictionSand ?? lr.shaftResistance)} kN` : '');
-    }
-    row.push(`${fmt(lr.shaftResistance)} kN`);
-    return row;
-  });
+  // Equals
+  doc.setTextColor(148, 163, 184); // slate-400
+  doc.setFont('helvetica', 'normal');
+  doc.text('=', margin + 2 * stripW / 3 - 2, y + 9);
 
-  const totalClaySF = layerResults.reduce((s, lr) => s + (lr.skinFrictionClay ?? 0), 0);
-  const totalSandSF = layerResults.reduce((s, lr) => s + (lr.skinFrictionSand ?? 0), 0);
+  // Total ΣQs
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...BLUE);
+  doc.text(`Total ΣQs: ${fmt(totalQs)} kN`, margin + 2 * stripW / 3 + 12, y + 9);
 
-  // Total row
-  const totalRow = ['', '', '', 'TOTALS  (ΣQs)'];
-  if (showClay) {
-    totalRow.push(totalClaySF > 0 ? `${fmt(totalClaySF)} kN` : '0.000 kN');
-  }
-  if (showSand) {
-    totalRow.push(totalSandSF > 0 ? `${fmt(totalSandSF)} kN` : '0.000 kN');
-  }
-  totalRow.push(`${fmt(totalQs)} kN`);
-  resultRows.push(totalRow);
+  y += stripH + 8;
 
-  // Column styles mapping
-  const colStyles = {
-    0: { halign: 'center', cellWidth: 12 },
-    1: { fontStyle: 'bold', cellWidth: 20 },
-    2: { halign: 'center', cellWidth: 16 },
-  };
-  let colIndex = 4;
-  if (showClay) {
-    colStyles[colIndex] = { halign: 'right' };
-    colIndex++;
-  }
-  if (showSand) {
-    colStyles[colIndex] = { halign: 'right' };
-    colIndex++;
-  }
-  colStyles[colIndex] = { halign: 'right', fontStyle: 'bold' };
-
-  autoTable(doc, {
-    startY: y,
-    margin: { left: margin, right: margin },
-    head: [headRow],
-    body: resultRows,
-    styles: { fontSize: 8, cellPadding: 2.5, textColor: DARK },
-    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
-    alternateRowStyles: { fillColor: LIGHT_GRAY },
-    columnStyles: colStyles,
-    didParseCell: (data) => {
-      if (data.row.index === resultRows.length - 1) {
-        data.cell.styles.fillColor = LIGHT_BLUE;
-        data.cell.styles.textColor = BLUE;
-        data.cell.styles.fontStyle = 'bold';
-      }
-    },
-    theme: 'striped',
-  });
-
-  y = doc.lastAutoTable.finalY + 10;
-
-  // ── Section 4: Summary ────────────────────────────────────────────────────
-  if (y > pageH - 60) {
+  // ── Section 4: Capacity Summary ───────────────────────────────────────────
+  if (y > pageH - 50) {
     doc.addPage();
     y = margin;
   }
@@ -282,7 +235,7 @@ export function generatePDF(formData, results) {
   doc.setFontSize(11);
   doc.setTextColor(...DARK);
   doc.text('4. Capacity Summary', margin, y);
-  y += 6;
+  y += 5;
 
   // Summary boxes
   const summaryItems = [
@@ -326,13 +279,126 @@ export function generatePDF(formData, results) {
     doc.text(item.unit, bx + boxW - 4, by + 17, { align: 'right' });
   });
 
-  y += 2 * (boxH + 3) + 10;
+  y += 2 * (boxH + 3) + 8;
 
-  // ── Formula Reference ─────────────────────────────────────────────────────
+  // ── Section 5: Layer-wise Shaft Resistance Breakdown ─────────────────────
+  if (y > pageH - 60) {
+    doc.addPage();
+    y = margin;
+  }
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...DARK);
+  doc.text('5. Layer-wise Shaft Resistance Breakdown', margin, y);
+  y += 5;
+
+  const hasClay = layerResults.some(lr => lr.soilType?.toLowerCase() === 'clay');
+  const hasSand = layerResults.some(lr => lr.soilType?.toLowerCase() === 'sand');
+
+  const showClay = hasClay;
+  const showSand = hasSand;
+
+  const headRow = ['Layer', 'Soil Type', 'Thick.', 'Method'];
+  if (showClay) headRow.push('Clay SF');
+  if (showSand) headRow.push('Sand SF');
+  headRow.push('Qs');
+  headRow.push('Qp');
+  headRow.push('Qu');
+  headRow.push('Qa');
+
+  const resultRows = layerResults.map((lr, i) => {
+    const orig = layers[i] || {};
+    const ld = (parseFloat(orig.thickness) || 0) / d;
+    const method = lr.soilType === 'clay' ? METHOD.clay : ld < 15 ? METHOD.sandLow : METHOD.sandHigh;
+
+    const row = [
+      `${lr.layer ?? (i + 1)}`,
+      lr.soilType ? lr.soilType.charAt(0).toUpperCase() + lr.soilType.slice(1) : '—',
+      `${lr.thickness ?? '—'} m`,
+      method,
+    ];
+    if (showClay) {
+      row.push(lr.soilType?.toLowerCase() === 'clay' ? `${fmt(lr.skinFrictionClay ?? lr.shaftResistance)} kN` : '—');
+    }
+    if (showSand) {
+      row.push(lr.soilType?.toLowerCase() === 'sand' ? `${fmt(lr.skinFrictionSand ?? lr.shaftResistance)} kN` : '—');
+    }
+    row.push(`${fmt(lr.shaftResistance)} kN`);
+    row.push(`${fmt(Qp)} kN`);
+    row.push(`${fmt(Qu)} kN`);
+    row.push(`${fmt(Qa)} kN`);
+    return row;
+  });
+
+  // Total row
+  const totalRow = ['', '', '', 'TOTALS (ΣQs)'];
+  if (showClay) {
+    totalRow.push(totalClaySF > 0 ? `${fmt(totalClaySF)} kN` : '0.000 kN');
+  }
+  if (showSand) {
+    totalRow.push(totalSandSF > 0 ? `${fmt(totalSandSF)} kN` : '0.000 kN');
+  }
+  totalRow.push(`${fmt(totalQs)} kN`);
+  totalRow.push(`${fmt(Qp)} kN`);
+  totalRow.push(`${fmt(Qu)} kN`);
+  totalRow.push(`${fmt(Qa)} kN`);
+  resultRows.push(totalRow);
+
+  // Column styles mapping
+  const colStyles = {
+    0: { halign: 'center', cellWidth: 12 },
+    1: { fontStyle: 'bold', cellWidth: 18 },
+    2: { halign: 'center', cellWidth: 16 },
+  };
+  let colIndex = 4;
+  if (showClay) {
+    colStyles[colIndex] = { halign: 'right' };
+    colIndex++;
+  }
+  if (showSand) {
+    colStyles[colIndex] = { halign: 'right' };
+    colIndex++;
+  }
+  colStyles[colIndex] = { halign: 'right', fontStyle: 'bold' }; // Qs
+  colIndex++;
+  colStyles[colIndex] = { halign: 'right' }; // Qp
+  colIndex++;
+  colStyles[colIndex] = { halign: 'right' }; // Qu
+  colIndex++;
+  colStyles[colIndex] = { halign: 'right', fontStyle: 'bold' }; // Qa
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    head: [headRow],
+    body: resultRows,
+    styles: { fontSize: 7.5, cellPadding: 2, textColor: DARK },
+    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
+    alternateRowStyles: { fillColor: LIGHT_GRAY },
+    columnStyles: colStyles,
+    didParseCell: (data) => {
+      if (data.row.index === resultRows.length - 1) {
+        data.cell.styles.fillColor = LIGHT_BLUE;
+        data.cell.styles.textColor = BLUE;
+        data.cell.styles.fontStyle = 'bold';
+      }
+    },
+    theme: 'striped',
+  });
+
+  y = doc.lastAutoTable.finalY + 8;
+
+  // ── Section 6: Formula Reference ──────────────────────────────────────────
+  if (y > pageH - 60) {
+    doc.addPage();
+    y = margin;
+  }
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(9);
   doc.setTextColor(...DARK);
-  doc.text('5. Formula Reference', margin, y);
+  doc.text('6. Formula Reference', margin, y);
   y += 5;
 
   const formulas = [

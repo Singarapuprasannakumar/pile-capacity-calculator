@@ -8,7 +8,7 @@ import AlertBanner from './components/AlertBanner';
 import { calculateCapacity } from './api/pileApi';
 
 const ResultsTable = lazy(() => import('./components/ResultsTable'));
-const ResultsPanel = lazy(() => import('./components/ResultsPanel'));
+import { SummaryStrip, CapacityCards } from './components/ResultsPanel';
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
 
@@ -447,34 +447,13 @@ export default function App() {
                   </p>
                 </div>
               </div>
-
-              {/* PDF / Print Buttons */}
-              <div className="flex items-center gap-3 no-print">
-                <button
-                  onClick={handleDownloadPDF}
-                  disabled={pdfLoading}
-                  className="btn-primary py-2.5 px-5 text-sm"
-                >
-                  {pdfLoading ? (
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  )}
-                  Download PDF
-                </button>
-                <button onClick={handlePrint} className="btn-secondary py-2.5 px-5 text-sm">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                  </svg>
-                  Print Report
-                </button>
-              </div>
             </div>
+
+            {/* Summary Strip */}
+            <SummaryStrip layerResults={results.layerResults} />
+
+            {/* Capacity Cards */}
+            <CapacityCards Qp={results.Qp} Qu={results.Qu} Qa={results.Qa} />
 
             {/* Layer-wise Breakdown Table */}
             <div className="card p-3">
@@ -504,17 +483,32 @@ export default function App() {
               </Suspense>
             </div>
 
-            {/* Summary Cards */}
-            <div className="card p-4">
-              <Suspense fallback={<div className="p-4 text-center text-xs text-slate-500">Loading summary charts...</div>}>
-                <ResultsPanel results={results} />
-              </Suspense>
+            {/* Action Buttons (Download/Print) */}
+            <div className="flex items-center justify-center gap-4 py-2 no-print">
+              <button
+                onClick={handleDownloadPDF}
+                disabled={pdfLoading}
+                className="btn-primary py-2.5 px-6 text-sm flex items-center gap-2"
+              >
+                {pdfLoading ? (
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                )}
+                Download PDF
+              </button>
+              <button onClick={handlePrint} className="btn-secondary py-2.5 px-6 text-sm flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+                Print Report
+              </button>
             </div>
-
-            {/* Formula note */}
-            <p className="text-xs text-slate-400 text-center pb-2 no-print">
-              Qu = ΣQs + Qp &nbsp;|&nbsp; Qa = Qu / 2.5 &nbsp;|&nbsp; Results are for design reference only.
-            </p>
           </section>
         )}
 
