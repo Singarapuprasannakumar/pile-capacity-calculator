@@ -59,27 +59,34 @@ const PileTipSection = ({ tipData, onChange, lastSoilType, errors = {} }) => {
 
       {/* Sand Tip Fields */}
       {isSand && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in">
-          <FormField
-            id="tip-overburden"
-            label="Effective Overburden at Tip (kN/m²)"
-            value={tipData.overburden}
-            onChange={set('overburden')}
-            placeholder="e.g. 120"
-            min={0}
-            error={errors.overburden}
-            tooltip="Effective vertical stress σ'v at the pile tip depth. Qp = σ'v × Nq × Ap for sand end bearing."
-          />
-          <FormField
-            id="tip-nq"
-            label="Nq – Bearing Capacity Factor"
-            value={tipData.nq}
-            onChange={set('nq')}
-            placeholder="e.g. 40"
-            min={0}
-            error={errors.nq}
-            tooltip="Dimensionless bearing capacity factor Nq for pile tip in sand. Depends on friction angle φ — use Meyerhof's or Berezantsev's chart."
-          />
+        <div className="flex flex-col gap-3 animate-fade-in">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField
+              id="tip-overburden"
+              label="Effective Overburden at Tip (kN/m²)"
+              value={tipData.overburden}
+              onChange={set('overburden')}
+              placeholder="Computed automatically on calculate..."
+              min={0}
+              disabled={true}
+              error={errors.overburden}
+              tooltip="Effective vertical stress σ'v at the pile tip depth. Automatically computed by the backend based on soil layer parameters and critical depth Dc."
+            />
+            <FormField
+              id="tip-nq"
+              label="Nq – Bearing Capacity Factor"
+              value={tipData.nq}
+              onChange={set('nq')}
+              placeholder="Computed automatically on calculate..."
+              min={0}
+              disabled={true}
+              error={errors.nq}
+              tooltip="Dimensionless bearing capacity factor Nq for pile tip in sand. Automatically calculated by the backend using the Reissner-Vesic bearing capacity theory based on the friction angle of the last sand layer."
+            />
+          </div>
+          <p className="text-[11px] text-slate-500 italic mt-1 bg-slate-50 border border-slate-100 p-2.5 rounded-lg">
+            ℹ️ <strong>Auto-calculation:</strong> The effective stress at the tip and Nq are automatically computed by the backend using the defined soil profile layers. Any user inputs entered here will be ignored, and values will update upon clicking <strong>Calculate Capacity</strong>.
+          </p>
         </div>
       )}
     </div>
