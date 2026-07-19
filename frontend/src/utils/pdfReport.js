@@ -88,53 +88,71 @@ export function generatePDF(formData, results) {
 
   y = 48;
 
-  // ── Section 1: Pile Geometry ──────────────────────────────────────────────
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...DARK);
-  doc.text('1. Pile Geometry', margin, y);
-  y += 5;
+  // ── Calculation of Totals ────────────────────────────────────────────────
+  const totalClaySF = layerResults.reduce((s, lr) => s + (lr.skinFrictionClay ?? 0), 0);
+  const totalSandSF = layerResults.reduce((s, lr) => s + (lr.skinFrictionSand ?? 0), 0);
 
-  // Geometry table
+  // ── Section 1 & 2: Project Details & Pile Geometry (Side-by-Side) ─────────
+  const colW = (contentW - 10) / 2;
+
+  // Heading for 1. Project Details
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(...DARK);
+  doc.text('1. Project Details', margin, y);
+
+  // Heading for 2. Pile Geometry
+  doc.text('2. Pile Geometry', margin + colW + 10, y);
+  y += 4;
+
+  // Project Details Table
   autoTable(doc, {
     startY: y,
-    margin: { left: margin, right: margin },
-    head: [['Parameter', 'Symbol', 'Value']],
+    margin: { left: margin },
+    tableWidth: colW,
+    head: [['Parameter', 'Value']],
     body: [
-      ['Pile Diameter',         'D',    `${fmt(d, 3)} m`],
-      ['Pile Perimeter',        'C = πD',  `${fmt(perimeter, 4)} m`],
-      ['Pile Tip Area',         'Ap = πD²/4', `${fmt(tipArea, 6)} m²`],
-      ['Number of Soil Layers', 'n',    `${layers.length}`],
-      ['Factor of Safety',      'FOS',  `${FOS}`],
+      ['Pile Diameter', `${fmt(d, 3)} m`],
+      ['Number of Soil Layers', `${layers.length}`],
+      ['Factor of Safety', `${FOS}`],
+      ['Date', `${dateStr}`],
     ],
-    styles: {
-      fontSize: 9,
-      cellPadding: 3,
-      textColor: DARK,
-    },
-    headStyles: {
-      fillColor: DARK,
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      fontSize: 9,
-    },
+    styles: { fontSize: 8.5, cellPadding: 2.5, textColor: DARK },
+    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
     alternateRowStyles: { fillColor: LIGHT_GRAY },
-    columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 70 },
-      1: { cellWidth: 40, textColor: [100, 116, 139] },
-      2: { halign: 'right', fontStyle: 'bold' },
-    },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } },
     theme: 'striped',
   });
 
-  y = doc.lastAutoTable.finalY + 8;
+  const table1FinalY = doc.lastAutoTable.finalY;
 
-  // ── Section 2: Soil Profile Input ─────────────────────────────────────────
+  // Pile Geometry Table
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin + colW + 10 },
+    tableWidth: colW,
+    head: [['Parameter', 'Value']],
+    body: [
+      ['Diameter (D)', `${fmt(d, 3)} m`],
+      ['Perimeter (C = πD)', `${fmt(perimeter, 4)} m`],
+      ['Tip Area (Ap = πD²/4)', `${fmt(tipArea, 6)} m²`],
+    ],
+    styles: { fontSize: 8.5, cellPadding: 2.5, textColor: DARK },
+    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+    alternateRowStyles: { fillColor: LIGHT_GRAY },
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 45 } },
+    theme: 'striped',
+  });
+
+  const table2FinalY = doc.lastAutoTable.finalY;
+  y = Math.max(table1FinalY, table2FinalY) + 8;
+
+  // ── Section 3: Layer Details ──────────────────────────────────────────────
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10.5);
   doc.setTextColor(...DARK);
-  doc.text('2. Soil Layer Input Parameters', margin, y);
-  y += 5;
+  doc.text('3. Layer Details', margin, y);
+  y += 4;
 
   const layerRows = layers.map((layer, i) => {
     const dn = d || 1;
@@ -148,7 +166,7 @@ export function generatePDF(formData, results) {
       else params += `,  γ = ${layer.bulkUnit || '—'} kN/m³,  WT = ${layer.waterTableDepth || '—'} m`;
     }
     return [
-      `${i + 1}`,
+      `Layer ${i + 1}`,
       layer.soilType ? layer.soilType.charAt(0).toUpperCase() + layer.soilType.slice(1) : '—',
       `${layer.thickness || '—'} m`,
       layer.soilType === 'sand' ? (ld < 15 ? 'L/D < 15' : 'L/D ≥ 15') : '—',
@@ -165,7 +183,7 @@ export function generatePDF(formData, results) {
     headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
     alternateRowStyles: { fillColor: LIGHT_GRAY },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 10 },
+      0: { fontStyle: 'bold', cellWidth: 20 },
       1: { fontStyle: 'bold', cellWidth: 24 },
       2: { halign: 'center', cellWidth: 22 },
       3: { halign: 'center', cellWidth: 22 },
@@ -175,123 +193,61 @@ export function generatePDF(formData, results) {
 
   y = doc.lastAutoTable.finalY + 8;
 
-  // ── Section 3: Summary Breakdown (ΣQs) ─────────────────────────────────────
-  const totalClaySF = layerResults.reduce((s, lr) => s + (lr.skinFrictionClay ?? 0), 0);
-  const totalSandSF = layerResults.reduce((s, lr) => s + (lr.skinFrictionSand ?? 0), 0);
+  // Start new page to keep summary and tables together nicely
+  doc.addPage();
+  y = margin;
 
-  if (y > pageH - 45) {
-    doc.addPage();
-    y = margin;
-  }
-
+  // ── Section 4: Calculation Summary ────────────────────────────────────────
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10.5);
   doc.setTextColor(...DARK);
-  doc.text('3. Summary Breakdown (ΣQs)', margin, y);
-  y += 5;
+  doc.text('4. Calculation Summary', margin, y);
+  y += 4;
 
-  const stripW = contentW;
-  const stripH = 14;
-  doc.setFillColor(248, 250, 252); // bg-slate-50
-  doc.roundedRect(margin, y, stripW, stripH, 2, 2, 'F');
-  doc.setDrawColor(226, 232, 240); // border-slate-200
-  doc.roundedRect(margin, y, stripW, stripH, 2, 2, 'S');
-
-  doc.setFontSize(8.5);
-  doc.setFont('helvetica', 'bold');
-  // Clay ΣQs
-  doc.setTextColor(146, 64, 14); // amber-800
-  doc.text(`Clay ΣQs: ${fmt(totalClaySF)} kN`, margin + 8, y + 9);
-
-  // Plus
-  doc.setTextColor(148, 163, 184); // slate-400
-  doc.setFont('helvetica', 'normal');
-  doc.text('+', margin + stripW / 3 - 2, y + 9);
-
-  // Sand ΣQs
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(120, 53, 15); // orange-800
-  doc.text(`Sand ΣQs: ${fmt(totalSandSF)} kN`, margin + stripW / 3 + 12, y + 9);
-
-  // Equals
-  doc.setTextColor(148, 163, 184); // slate-400
-  doc.setFont('helvetica', 'normal');
-  doc.text('=', margin + 2 * stripW / 3 - 2, y + 9);
-
-  // Total ΣQs
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...BLUE);
-  doc.text(`Total ΣQs: ${fmt(totalQs)} kN`, margin + 2 * stripW / 3 + 12, y + 9);
-
-  y += stripH + 8;
-
-  // ── Section 4: Capacity Summary ───────────────────────────────────────────
-  if (y > pageH - 50) {
-    doc.addPage();
-    y = margin;
-  }
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(...DARK);
-  doc.text('4. Capacity Summary', margin, y);
-  y += 5;
-
-  // Summary boxes
-  const summaryItems = [
-    { label: 'Total Shaft Resistance',   symbol: 'ΣQs', value: fmt(totalQs), unit: 'kN', fill: LIGHT_BLUE,  text: BLUE  },
-    { label: 'End Bearing Resistance',   symbol: 'Qp',  value: fmt(Qp),      unit: 'kN', fill: LIGHT_GRAY,  text: DARK  },
-    { label: 'Ultimate Pile Capacity',   symbol: 'Qu',  value: fmt(Qu),      unit: 'kN', fill: [241,245,249], text: DARK },
-    { label: 'Allowable Pile Capacity',  symbol: 'Qa',  value: fmt(Qa),      unit: 'kN', fill: LIGHT_GREEN, text: GREEN },
-  ];
-
-  const boxW = (contentW - 9) / 2;
-  const boxH = 22;
-  let col = 0, row = 0;
-
-  summaryItems.forEach((item, idx) => {
-    col = idx % 2;
-    row = Math.floor(idx / 2);
-    const bx = margin + col * (boxW + 3);
-    const by = y + row * (boxH + 3);
-
-    doc.setFillColor(...item.fill);
-    doc.roundedRect(bx, by, boxW, boxH, 3, 3, 'F');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(...item.text);
-    doc.text(item.label.toUpperCase(), bx + 4, by + 6);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(100, 116, 139);
-    doc.text(item.symbol, bx + boxW - 4, by + 6, { align: 'right' });
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(16);
-    doc.setTextColor(...item.text);
-    doc.text(item.value, bx + 4, by + 17);
-
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(100, 116, 139);
-    doc.text(item.unit, bx + boxW - 4, by + 17, { align: 'right' });
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    head: [['Resistance Component', 'Symbol / Equation', 'Calculated Value']],
+    body: [
+      ['Clay Shaft Resistance', 'ΣQs (Clay)', `${fmt(totalClaySF)} kN`],
+      ['Sand Shaft Resistance', 'ΣQs (Sand)', `${fmt(totalSandSF)} kN`],
+      ['Total Shaft Resistance', 'ΣQs = ΣQs(Clay) + ΣQs(Sand)', `${fmt(totalQs)} kN`],
+      ['End Bearing Resistance', 'Qp', `${fmt(Qp)} kN`],
+      ['Ultimate Pile Capacity', 'Qu = ΣQs + Qp', `${fmt(Qu)} kN`],
+      ['Allowable Capacity (Safe Load)', `Qa = Qu / FOS  (FOS = ${FOS})`, `${fmt(Qa)} kN`],
+    ],
+    styles: { fontSize: 8.5, cellPadding: 2.5, textColor: DARK },
+    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+    alternateRowStyles: { fillColor: LIGHT_GRAY },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 70 },
+      1: { textColor: [100, 116, 139], cellWidth: 120 },
+      2: { halign: 'right', fontStyle: 'bold' }
+    },
+    didParseCell: (data) => {
+      if (data.row.index === 4) {
+        data.cell.styles.fillColor = [241, 245, 249];
+      } else if (data.row.index === 5) {
+        data.cell.styles.fillColor = LIGHT_GREEN;
+        data.cell.styles.textColor = GREEN;
+      }
+    },
+    theme: 'striped',
   });
 
-  y += 2 * (boxH + 3) + 8;
+  y = doc.lastAutoTable.finalY + 8;
 
-  // ── Section 5: Layer-wise Shaft Resistance Breakdown ─────────────────────
+  // ── Section 5: Layer-wise Resistance Table ────────────────────────────────
   if (y > pageH - 60) {
     doc.addPage();
     y = margin;
   }
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10.5);
   doc.setTextColor(...DARK);
-  doc.text('5. Layer-wise Shaft Resistance Breakdown', margin, y);
-  y += 5;
+  doc.text('5. Layer-wise Resistance Table', margin, y);
+  y += 4;
 
   const hasClay = layerResults.some(lr => lr.soilType?.toLowerCase() === 'clay');
   const hasSand = layerResults.some(lr => lr.soilType?.toLowerCase() === 'sand');
