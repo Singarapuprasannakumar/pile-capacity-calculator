@@ -111,8 +111,9 @@ const SoilLayerCard = ({ index, layer, onChange, errors = {}, diameter }) => {
             value={layer.alpha}
             onChange={set('alpha')}
             placeholder="0 – 1"
-            min={0}
+            min={0.1}
             max={1}
+            step={0.05}
             error={errors.alpha}
             tooltip="Adhesion factor (α) used in the α-method for clay shaft resistance. Typically 0.3–1.0 depending on cohesion."
           />

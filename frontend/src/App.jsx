@@ -15,7 +15,7 @@ import { SummaryStrip, CapacityCards } from './components/ResultsPanel';
 const defaultLayer = () => ({
   soilType: '',
   thickness: '',
-  alpha: '', cohesion: '',           // clay
+  alpha: 0.8, cohesion: '',           // clay
   K: '', phi: '',                    // sand (both L/D)
   ovTop: '', ovBottom: '',           // sand L/D < 15
   bulkUnit: '', waterTableDepth: '', submergedUnit: '',  // sand L/D >= 15
@@ -146,7 +146,21 @@ export default function App() {
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
-    const { valid, errors: errs } = validateForm({ diameter, numLayers, layers, tip });
+    // If the user clears the alpha input, automatically restore a valid default value (0.8)
+    const correctedLayers = layers.map((layer) => {
+      if (layer.soilType === 'clay') {
+        const val = layer.alpha;
+        if (val === '' || val === undefined || val === null) {
+          return { ...layer, alpha: 0.8 };
+        }
+      }
+      return layer;
+    });
+
+    // Update UI layer state
+    setLayers(correctedLayers);
+
+    const { valid, errors: errs } = validateForm({ diameter, numLayers, layers: correctedLayers, tip });
     setErrors(errs);
     if (!valid) {
       setAlert({ type: 'error', title: 'Validation Failed', message: 'Please fill in all required fields correctly.' });
@@ -157,7 +171,7 @@ export default function App() {
     setAlert(null); setLoading(true); setResults(null);
 
     const d = parseFloat(diameter);
-    const layersPayload = layers.map((layer) => {
+    const layersPayload = correctedLayers.map((layer) => {
       const base = { soilType: layer.soilType, thickness: parseFloat(layer.thickness) };
       if (layer.soilType === 'clay') {
         return { ...base, alpha: parseFloat(layer.alpha), cohesion: parseFloat(layer.cohesion) };
@@ -169,13 +183,16 @@ export default function App() {
         : { ...sandBase, bulkUnit: parseFloat(layer.bulkUnit), waterTableDepth: parseFloat(layer.waterTableDepth), submergedUnit: parseFloat(layer.submergedUnit) };
     });
 
-    const lastSoilType = layers[layers.length - 1]?.soilType;
+    const lastSoilType = correctedLayers[correctedLayers.length - 1]?.soilType;
     const tipPayload = lastSoilType === 'clay'
       ? { soilType: 'clay', cohesion: parseFloat(tip.cohesion) }
       : { soilType: 'sand', overburden: parseFloat(tip.overburden), nq: parseFloat(tip.nq) };
 
+    const payload = { diameter: d, layers: layersPayload, tip: tipPayload };
+    console.log("Calculation Payload:", payload);
+
     try {
-      const res = await calculateCapacity({ diameter: d, layers: layersPayload, tip: tipPayload });
+      const res = await calculateCapacity(payload);
       setResults(res.data);
       setAlert({ type: 'success', title: 'Calculation Complete', message: 'Pile capacity has been computed successfully. See results below.' });
       setTimeout(() => document.getElementById('results-section')?.scrollIntoView({ behavior: 'smooth' }), 150);
