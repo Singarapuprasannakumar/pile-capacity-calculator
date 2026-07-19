@@ -73,7 +73,10 @@ function validateForm({ diameter, numLayers, layers, tip }) {
     else if (pos(tip.cohesion)) { errors.tip.cohesion = pos(tip.cohesion); valid = false; }
   }
   if (lastSoilType === 'sand') {
-    // Note: tip overburden and nq are automatically calculated by the backend for sand tips
+    if (req(tip.overburden)) { errors.tip.overburden = req(tip.overburden); valid = false; }
+    else if (pos(tip.overburden)) { errors.tip.overburden = pos(tip.overburden); valid = false; }
+    if (req(tip.nq))         { errors.tip.nq         = req(tip.nq);         valid = false; }
+    else if (pos(tip.nq))    { errors.tip.nq         = pos(tip.nq);         valid = false; }
   }
 
   return { valid, errors };
@@ -193,17 +196,6 @@ export default function App() {
     try {
       const res = await calculateCapacity(payload);
       setResults(res.data);
-      if (res.data.intermediateCalculations) {
-        setTip((prev) => ({
-          ...prev,
-          overburden: res.data.intermediateCalculations.tipEffectiveOverburden !== undefined
-            ? res.data.intermediateCalculations.tipEffectiveOverburden.toString()
-            : prev.overburden,
-          nq: res.data.intermediateCalculations.calculatedNq !== undefined
-            ? res.data.intermediateCalculations.calculatedNq.toString()
-            : prev.nq
-        }));
-      }
       setAlert({ type: 'success', title: 'Calculation Complete', message: 'Pile capacity has been computed successfully. See results below.' });
       setTimeout(() => document.getElementById('results-section')?.scrollIntoView({ behavior: 'smooth' }), 150);
     } catch (err) {

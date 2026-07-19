@@ -470,8 +470,17 @@ def validate_inputs(diameter: float, layers: List[dict], tip: dict):
             overburden_val = float(overburden)
         except ValueError:
             raise HTTPException(status_code=422, detail="Pile tip (Sand) overburden must be a numeric value.")
-        if overburden_val < 0:
-            raise HTTPException(status_code=422, detail="Pile tip (Sand) overburden must be greater than or equal to 0.")
+        if overburden_val <= 0:
+            raise HTTPException(status_code=422, detail="Pile tip (Sand) overburden must be greater than 0.")
+
+        nq = tip.get("nq")
+        if nq is not None:
+            try:
+                nq_val = float(nq)
+            except ValueError:
+                raise HTTPException(status_code=422, detail="Pile tip (Sand) Nq must be a numeric value.")
+            if nq_val <= 0:
+                raise HTTPException(status_code=422, detail="Pile tip (Sand) Nq must be greater than 0.")
     else:
         raise HTTPException(status_code=422, detail=f"Pile tip: Unknown soil type '{tip_type}'.")
 
@@ -721,13 +730,19 @@ def calculate(req: CalculateRequest):
             }
 
     elif tip_type == "sand":
-        tip_depth = current_depth
-        tip_overburden_val = get_capped_stress_at_depth(tip_depth)
-
-        # Automatic Nq Calculation using friction angle phi of the tip sand layer
-        last_layer = req.layers[-1]
-        phi_tip = float(last_layer.get("phi", 30))
-        computed_nq = calculate_nq(phi_tip)
+        try:
+            tip = SandTip(**tip_raw)
+        except Exception as e:
+            raise HTTPException(status_code=422, detail=f"Pile tip (Sand) parsing: {e}")
+        
+        tip_overburden_val = tip.overburden
+        
+        if tip.nq is not None:
+            computed_nq = tip.nq
+        else:
+            last_layer = req.layers[-1]
+            phi_tip = float(last_layer.get("phi", 30))
+            computed_nq = calculate_nq(phi_tip)
         
         qp = calculate_sand_tip(tip_overburden_val, computed_nq, area)
         
@@ -738,9 +753,9 @@ def calculate(req: CalculateRequest):
             
         if req.debugEngineering:
             tip_trace = {
-                "formula": "Qp = σ'_v_tip * Nq * Ap",
-                "reference": explain_calculation("IS2911_P1S2_B12_TIP"),
-                "inputs": {"tipEffectiveOverburden": round(tip_overburden_val, 3), "NqReference": explain_calculation("REISSNER_VESIC_NQ"), "calculatedNq": round(computed_nq, 4), "Ap": round(area, 4)},
+                "formula": "Qp = overburden_tip * Nq * Ap",
+                "reference": "User-defined manual end bearing design values",
+                "inputs": {"userEffectiveOverburden": round(tip_overburden_val, 3), "userNq": round(computed_nq, 4), "Ap": round(area, 4)},
                 "result": round(qp, 3)
             }
     else:

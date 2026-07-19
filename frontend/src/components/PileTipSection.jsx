@@ -63,29 +63,27 @@ const PileTipSection = ({ tipData, onChange, lastSoilType, errors = {} }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               id="tip-overburden"
-              label="Computed Effective Overburden at Tip (kN/m²)"
+              label="Effective Overburden at Tip (kN/m²)"
               value={tipData.overburden}
               onChange={set('overburden')}
-              placeholder="Computed automatically on calculate..."
-              min={0}
-              disabled={true}
+              placeholder="e.g. 120"
+              min={0.01}
               error={errors.overburden}
-              tooltip="Effective vertical stress σ'v at the pile tip depth. Automatically computed by the backend based on soil layer parameters and critical depth Dc."
+              tooltip="Effective vertical stress σ'v at the pile tip depth. Qp = σ'v × Nq × Ap for sand end bearing."
             />
             <FormField
               id="tip-nq"
-              label="Computed Bearing Capacity Factor (Nq)"
+              label="Bearing Capacity Factor (Nq)"
               value={tipData.nq}
               onChange={set('nq')}
-              placeholder="Computed automatically on calculate..."
-              min={0}
-              disabled={true}
+              placeholder="e.g. 40"
+              min={0.01}
               error={errors.nq}
-              tooltip="Dimensionless bearing capacity factor Nq for pile tip in sand. Automatically calculated by the backend using the Reissner-Vesic bearing capacity theory based on the friction angle of the last sand layer."
+              tooltip="Dimensionless bearing capacity factor Nq for pile tip in sand. Typically from standard charts (e.g., IS 2911, Berezantsev)."
             />
           </div>
           <p className="text-[11px] text-slate-500 italic mt-1 bg-slate-50 border border-slate-100 p-2.5 rounded-lg">
-            ℹ️ <strong>Calculated from:</strong> soil profile, groundwater level, pile geometry, critical-depth rules, and the friction angle of the bearing layer.
+            ℹ️ Enter the effective overburden pressure and bearing capacity factor based on your geotechnical investigation or design calculations.
           </p>
         </div>
       )}
