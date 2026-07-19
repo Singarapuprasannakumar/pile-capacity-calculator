@@ -63,7 +63,7 @@ const PileTipSection = ({ tipData, onChange, lastSoilType, errors = {} }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               id="tip-overburden"
-              label="Effective Overburden at Tip (kN/m²)"
+              label="Computed Effective Overburden at Tip (kN/m²)"
               value={tipData.overburden}
               onChange={set('overburden')}
               placeholder="Computed automatically on calculate..."
@@ -74,7 +74,7 @@ const PileTipSection = ({ tipData, onChange, lastSoilType, errors = {} }) => {
             />
             <FormField
               id="tip-nq"
-              label="Nq – Bearing Capacity Factor"
+              label="Computed Bearing Capacity Factor (Nq)"
               value={tipData.nq}
               onChange={set('nq')}
               placeholder="Computed automatically on calculate..."
@@ -85,7 +85,7 @@ const PileTipSection = ({ tipData, onChange, lastSoilType, errors = {} }) => {
             />
           </div>
           <p className="text-[11px] text-slate-500 italic mt-1 bg-slate-50 border border-slate-100 p-2.5 rounded-lg">
-            ℹ️ <strong>Auto-calculation:</strong> The effective stress at the tip and Nq are automatically computed by the backend using the defined soil profile layers. Any user inputs entered here will be ignored, and values will update upon clicking <strong>Calculate Capacity</strong>.
+            ℹ️ <strong>Calculated from:</strong> soil profile, groundwater level, pile geometry, critical-depth rules, and the friction angle of the bearing layer.
           </p>
         </div>
       )}
