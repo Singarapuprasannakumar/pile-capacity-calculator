@@ -6,6 +6,7 @@ import LiveSummaryPanel from './components/LiveSummaryPanel';
 import Spinner from './components/Spinner';
 import AlertBanner from './components/AlertBanner';
 import { calculateCapacity } from './api/pileApi';
+import { exportTableToExcel } from './utils/excelExport';
 
 const ResultsTable = lazy(() => import('./components/ResultsTable'));
 import { SummaryStrip, CapacityCards } from './components/ResultsPanel';
@@ -220,6 +221,12 @@ export default function App() {
   // ── Print ──────────────────────────────────────────────────────────────────
   const handlePrint = () => window.print();
 
+  // ── Excel Download ─────────────────────────────────────────────────────────
+  const handleDownloadExcel = () => {
+    if (!results) return;
+    exportTableToExcel({ diameter, layers }, results);
+  };
+
   const lastSoilType = layers[layers.length - 1]?.soilType || '';
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -261,6 +268,15 @@ export default function App() {
                     </svg>
                   )}
                   Download PDF
+                </button>
+                <button
+                  onClick={handleDownloadExcel}
+                  className="btn-secondary text-xs py-2 px-4 text-primary-600 border-primary-600 hover:bg-primary-50"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  </svg>
+                  📊 Download Table
                 </button>
                 <button onClick={handlePrint} className="btn-secondary text-xs py-2 px-4">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -518,6 +534,15 @@ export default function App() {
                   </svg>
                 )}
                 Download PDF
+              </button>
+              <button
+                onClick={handleDownloadExcel}
+                className="btn-secondary py-2.5 px-6 text-sm flex items-center gap-2 text-primary-600 border-primary-600 hover:bg-primary-50"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                📊 Download Table
               </button>
               <button onClick={handlePrint} className="btn-secondary py-2.5 px-6 text-sm flex items-center gap-2">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
