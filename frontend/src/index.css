@@ -143,9 +143,13 @@
 @media print {
   .no-print { display: none !important; }
 
-  body {
+  html, body {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
     background: white !important;
-    font-size: 11pt;
+    font-size: 10pt;
     color: #1e293b;
   }
 
@@ -155,12 +159,51 @@
     break-inside: avoid;
   }
 
-  #results-table { break-inside: avoid; }
+  /* Make sure table and containers are fully visible and not clipped */
+  .overflow-x-auto, 
+  .overflow-auto, 
+  .overflow-hidden,
+  .scrollbar-thin,
+  div {
+    overflow: visible !important;
+  }
 
-  #results-section { margin-top: 0 !important; }
+  table {
+    width: 100% !important;
+    table-layout: auto !important;
+    border-collapse: collapse !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  tr, tbody, thead {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  th, td {
+    white-space: normal !important;
+    word-break: break-word !important;
+    overflow: visible !important;
+    padding: 4px 6px !important;
+    font-size: 8.5pt !important;
+  }
+
+  #results-table { 
+    break-inside: avoid; 
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  #results-section { 
+    margin-top: 0 !important; 
+    width: 100% !important;
+    max-width: none !important;
+    overflow: visible !important;
+  }
 
   @page {
-    margin: 15mm 12mm;
-    size: A4 portrait;
+    margin: 10mm;
+    size: A4 landscape;
   }
 }
