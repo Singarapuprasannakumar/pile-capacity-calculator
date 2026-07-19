@@ -763,17 +763,30 @@ def calculate(req: CalculateRequest):
     # 6. Structured console logging
     calc_time_ms = (time.perf_counter() - start_time) * 1000.0
     now_str = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    uncapped_stress = get_uncapped_stress_at_depth(current_depth, stress_points)
+    capped_stress = get_capped_stress_at_depth(current_depth)
+    
     print(f"[{now_str}] PILE CAPACITY CALCULATION LOG:")
-    print(f"  Pile Diameter:      {diameter} m")
-    print(f"  Total Pile Depth:   {current_depth} m")
-    print(f"  Number of Layers:   {len(req.layers)}")
-    print(f"  Soil Profile:       {[l.get('soilType') for l in req.layers]}")
-    print(f"  Critical Depth Dc:  {Dc} m")
-    print(f"  Skin Friction Qs:   {total_qs:.3f} kN")
-    print(f"  End Bearing Qp:     {qp:.3f} kN")
-    print(f"  Ultimate Capacity:  {qu:.3f} kN")
-    print(f"  Allowable Capacity: {qa:.3f} kN")
-    print(f"  Execution Time:     {calc_time_ms:.2f} ms")
+    print(f"  Pile Diameter:          {diameter} m")
+    print(f"  Pile Radius:            {diameter / 2.0} m")
+    print(f"  Tip Area (Ap):          {area:.6f} sq.m")
+    print(f"  Tip Depth:              {current_depth} m")
+    print(f"  Critical Depth (Dc):    {Dc} m")
+    print(f"  Uncapped Stress at Tip: {uncapped_stress:.3f} kPa")
+    print(f"  Capped Stress at Tip:   {capped_stress:.3f} kPa")
+    if tip_type == "sand":
+        print(f"  Friction Angle (phi):   {phi_tip} deg")
+        print(f"  Calculated Nq:          {computed_nq:.4f}")
+        print(f"  Nq Formula Used:        Nq = exp(pi*tan(phi)) * tan2(45 + phi/2)")
+        print(f"  Qp Formula Used:        Qp = overburden_tip * Nq * Ap")
+    else:
+        print(f"  Cohesion at Tip (Cu):   {tip.cohesion} kPa")
+        print(f"  Qp Formula Used:        Qp = Nc * Cu * Ap (Nc = {GeotechnicalConfig.SKEMPTON_NC})")
+    print(f"  Final End Bearing Qp:   {qp:.3f} kN")
+    print(f"  Skin Friction Qs:       {total_qs:.3f} kN")
+    print(f"  Ultimate Capacity Qu:   {qu:.3f} kN")
+    print(f"  Allowable Capacity Qa:  {qa:.3f} kN")
+    print(f"  Execution Time:         {calc_time_ms:.2f} ms")
     print("-" * 80)
 
     # Build intermediateCalculations dict for response
