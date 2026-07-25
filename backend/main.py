@@ -26,6 +26,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_swagger_ui_html
 from pydantic import BaseModel, Field
+from schemas.sbc import SbcRequest, SbcResponse
+from calculators.sbc_calculator import calculate_sbc
+from routers import footing, soil
 
 
 # ─── Geotechnical Engineering Configuration Constants ─────────────────────────
@@ -857,5 +860,19 @@ def calculate(req: CalculateRequest):
         Qa=qa,
         warnings=warnings,
         intermediateCalculations=intermediate_calc,
-        designSummary=summary_obj,
     )
+
+
+# ─── Safe Bearing Capacity (IS 6403:1981) Endpoint ───────────────────────────
+
+@app.post("/sbc/calculate", response_model=SbcResponse, summary="Calculate safe bearing capacity (IS 6403)")
+def calculate_sbc_route(req: SbcRequest):
+    return calculate_sbc(req)
+
+# ─── Include Footing Router ───
+app.include_router(footing.router)
+
+# ─── Include Soil Router ───
+app.include_router(soil.router)
+
+

@@ -1,3 +1,5 @@
+import React from 'react';
+
 /**
  * Loading spinner overlay / inline spinner.
  */
@@ -42,4 +44,4 @@ const SpinnerSVG = ({ size = 24 }) => (
   </svg>
 );
 
-export default Spinner;
+export default React.memo(Spinner);

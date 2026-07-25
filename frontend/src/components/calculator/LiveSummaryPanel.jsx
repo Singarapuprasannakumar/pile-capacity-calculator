@@ -1,9 +1,4 @@
-/**
- * LiveSummaryPanel
- * ─────────────────
- * Sticky right-column panel showing live pile geometry, soil profile,
- * and calculation results as the user fills in the form.
- */
+import React from 'react';
 
 const PI = Math.PI;
 
@@ -11,8 +6,6 @@ const fmt = (v, dec = 3) =>
   typeof v === 'number' && !isNaN(v)
     ? v.toLocaleString('en-IN', { maximumFractionDigits: dec })
     : '—';
-
-// ── Sub-components ────────────────────────────────────────────────────────────
 
 const SectionTitle = ({ children }) => (
   <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2.5">
@@ -35,8 +28,6 @@ const SummaryRow = ({ label, value, bold, green, blue }) => (
     </span>
   </div>
 );
-
-// ── Main Component ─────────────────────────────────────────────────────────────
 
 const LiveSummaryPanel = ({ diameter, layers, results }) => {
   const d = parseFloat(diameter) || 0;
@@ -64,7 +55,6 @@ const LiveSummaryPanel = ({ diameter, layers, results }) => {
 
   return (
     <div className="card overflow-hidden flex flex-col">
-      {/* Panel Header */}
       <div className="bg-gradient-to-br from-primary-700 to-primary-600 px-5 py-4">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
@@ -77,7 +67,6 @@ const LiveSummaryPanel = ({ diameter, layers, results }) => {
             <p className="text-sm font-bold text-white leading-tight">Live Summary</p>
             <p className="text-xs text-primary-200 leading-tight mt-0.5">Updates as you type</p>
           </div>
-          {/* Live indicator */}
           <div className="ml-auto flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             <span className="text-xs text-primary-200">Live</span>
@@ -86,8 +75,6 @@ const LiveSummaryPanel = ({ diameter, layers, results }) => {
       </div>
 
       <div className="p-5 flex flex-col gap-5 overflow-y-auto scrollbar-thin">
-
-        {/* ── Pile Geometry ── */}
         <div>
           <SectionTitle>Pile Geometry</SectionTitle>
           <div className="flex flex-col gap-0.5">
@@ -109,7 +96,6 @@ const LiveSummaryPanel = ({ diameter, layers, results }) => {
 
         <div className="h-px bg-slate-100" />
 
-        {/* ── Soil Profile ── */}
         <div>
           <SectionTitle>Soil Profile</SectionTitle>
           {layers.length === 0 ? (
@@ -163,7 +149,6 @@ const LiveSummaryPanel = ({ diameter, layers, results }) => {
                 );
               })}
 
-              {/* Pile tip indicator */}
               {layers.length > 0 && (
                 <div className="flex items-center gap-2 px-3 py-1.5 mt-1 rounded-lg bg-purple-50 border border-purple-100">
                   <svg className="w-3.5 h-3.5 text-purple-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,7 +165,6 @@ const LiveSummaryPanel = ({ diameter, layers, results }) => {
           )}
         </div>
 
-        {/* ── Results (after calculation) ── */}
         {results ? (
           <>
             <div className="h-px bg-slate-100" />
@@ -219,4 +203,4 @@ const LiveSummaryPanel = ({ diameter, layers, results }) => {
   );
 };
 
-export default LiveSummaryPanel;
+export default React.memo(LiveSummaryPanel);

@@ -1,103 +1,289 @@
 /**
  * pdfReport.js
  * ─────────────
- * Generates a professional PDF engineering report for pile capacity results.
+ * Generates professional PDF engineering reports for pile capacity calculations.
+ * Supports individual report exports and combined multi-report comparison exports.
  * Uses jsPDF + jsPDF-autotable.
  */
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatEngineeringNumber, getEngineeringMethod, generateReportId } from './engineeringUtils';
 
 const PI = Math.PI;
 const FOS = 2.5;
-
-const fmt = (v, dec = 3) =>
-  typeof v === 'number' && !isNaN(v) ? v.toFixed(dec) : '—';
-
-const METHOD = {
-  clay: 'α-Method (Skempton)',
-  sandLow: 'Eff. Stress (L/D < 15)',
-  sandHigh: 'Eff. Stress (L/D ≥ 15)',
-};
+const DARK = [30, 41, 59];       // slate-800
+const LIGHT_GRAY = [248, 250, 252]; // slate-50
 
 /**
- * @param {{ diameter: number, layers: object[] }} formData
- * @param {{ layerResults: object[], Qp: number, Qu: number, Qa: number }} results
+ * Main function to generate an individual report PDF.
+ * Compatible with original signature generatePDF(formData, results) 
+ * as well as the new single report object structure generatePDF(report).
  */
-export function generatePDF(formData, results) {
-  const { diameter, layers } = formData;
-  const { layerResults, Qp, Qu, Qa } = results;
+export function generatePDF(formDataOrReport, results) {
+  let report = null;
+
+  if (formDataOrReport && formDataOrReport.inputs) {
+    // If it's a report object from comparison mode
+    report = formDataOrReport;
+  } else {
+    // If it's the legacy signature (formData, results)
+    const nowStr = new Date().toISOString();
+    const d = parseFloat(formDataOrReport.diameter) || 0;
+    const totalLength = formDataOrReport.layers.reduce((sum, l) => sum + (parseFloat(l.thickness) || 0), 0);
+    const bearing = formDataOrReport.layers.length > 0 
+      ? (formDataOrReport.layers[formDataOrReport.layers.length - 1].soilType === 'clay' ? 'Clay' : 'Sand') 
+      : '—';
+
+    report = {
+      id: generateReportId(),
+      reportNumber: 1,
+      createdAt: nowStr,
+      diameter: d,
+      pileLength: totalLength,
+      bearingLayer: bearing,
+      inputs: formDataOrReport,
+      calculations: results.layerResults,
+      outputs: { Qp: results.Qp, Qu: results.Qu, Qa: results.Qa }
+    };
+  }
+
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+  
+  // Draw the single report pages
+  drawSingleReportPages(doc, report, report.reportNumber);
+
+  // Apply footer page numbering
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    drawFooter(doc, p, totalPages, report.id, report.createdAt);
+  }
+
+  doc.save(`pile-capacity-report-no-${report.reportNumber}.pdf`);
+}
+
+/**
+ * Generates a combined PDF report containing a Comparison Summary Dashboard
+ * followed by all calculated reports page-by-page.
+ */
+export function generateCombinedPDF(reports) {
+  if (!reports || reports.length === 0) return;
+
+  // Fallback to standard single report if there is only 1 report
+  if (reports.length === 1) {
+    generatePDF(reports[0]);
+    return;
+  }
 
   const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 15;
+
+  // ─── PAGE 1: COMPARISON SUMMARY DASHBOARD ──────────────────────────────────
+  // Header Banner
+  doc.setFillColor(30, 41, 59);
+  doc.rect(0, 0, pageW, 38, 'F');
+
+  // Title & Subtitle
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.setTextColor(255, 255, 255);
+  doc.text('PILE CAPACITY COMPARISON REPORT', margin, 15);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(203, 213, 225);
+  doc.text('Geotechnical Design Summary & Diameter Comparison Dashboard', margin, 22);
+
+  const dateObj = new Date();
+  const dayStr = String(dateObj.getDate()).padStart(2, '0');
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthStr = monthNames[dateObj.getMonth()];
+  const yearStr = dateObj.getFullYear();
+  const dateFormatted = `${dayStr}-${monthStr}-${yearStr}`;
+
+  doc.setFontSize(7.5);
+  doc.text(`Reports Compared: ${reports.length}  |  Generated On: ${dateFormatted}`, margin, 29);
+
+  // Right banner info
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text('Pile Capacity Calculator', pageW - margin, 18, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(203, 213, 225);
+  doc.text('Software Version: v1.0', pageW - margin, 24, { align: 'right' });
+  doc.text('Academic Design Reference', pageW - margin, 29, { align: 'right' });
+
+  let y = 48;
+
+  // Heading for Summary Table
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text('Diameter Comparison Summary Dashboard', margin, y);
+  y += 4;
+
+  // Prepare comparison data rows
+  const comparisonHeaders = [
+    'Report', 
+    'Diameter (m)', 
+    'Pile Length (m)', 
+    'Total Shaft Resistance Qs (kN)', 
+    'End Bearing Capacity Qp (kN)', 
+    'Ultimate Capacity Qu (kN)', 
+    'Allowable Capacity Qa (kN)'
+  ];
+
+  const comparisonRows = reports.map(r => {
+    const totalQs = r.calculations.reduce((s, lr) => s + lr.shaftResistance, 0);
+    return [
+      `Report #${r.reportNumber}`,
+      formatEngineeringNumber(r.diameter),
+      formatEngineeringNumber(r.pileLength),
+      formatEngineeringNumber(totalQs),
+      formatEngineeringNumber(r.outputs.Qp),
+      formatEngineeringNumber(r.outputs.Qu),
+      formatEngineeringNumber(r.outputs.Qa)
+    ];
+  });
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    head: [comparisonHeaders],
+    body: comparisonRows,
+    styles: { fontSize: 8, cellPadding: 3, textColor: DARK },
+    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8, halign: 'center' },
+    alternateRowStyles: { fillColor: LIGHT_GRAY },
+    columnStyles: {
+      0: { fontStyle: 'bold', halign: 'center' },
+      1: { halign: 'right' },
+      2: { halign: 'right' },
+      3: { halign: 'right' },
+      4: { halign: 'right' },
+      5: { halign: 'right', fontStyle: 'bold' },
+      6: { halign: 'right', fontStyle: 'bold' }
+    },
+    theme: 'striped',
+  });
+
+  y = doc.lastAutoTable.finalY + 8;
+
+  // Draw Table of Contents card
+  if (y < pageH - 50) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('Table of Contents', margin, y);
+    y += 4;
+
+    const tocRows = [
+      ['Page 1', 'Diameter Comparison Summary Dashboard'],
+    ];
+    reports.forEach((r, idx) => {
+      tocRows.push([`Pages ${idx * 2 + 2} - ${idx * 2 + 3}`, `Pile Capacity Report #${r.reportNumber} (Diameter = ${formatEngineeringNumber(r.diameter)} m)`]);
+    });
+
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin },
+      tableWidth: 150,
+      body: tocRows,
+      styles: { fontSize: 7.5, cellPadding: 2, textColor: DARK },
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: 35 },
+        1: { cellWidth: 115 }
+      },
+      theme: 'plain'
+    });
+  }
+
+  // ─── APPEND SUBSEQUENT REPORTS ─────────────────────────────────────────────
+  reports.forEach((r) => {
+    doc.addPage();
+    drawSingleReportPages(doc, r, r.reportNumber);
+  });
+
+  // ─── FOOTER NUMBERING ACROSS ALL PAGES ─────────────────────────────────────
+  const totalPages = doc.internal.getNumberOfPages();
+  const globalReportId = generateReportId();
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+    drawFooter(doc, p, totalPages, globalReportId, dateFormatted);
+  }
+
+  doc.save(`pile-capacity-comparison-report-${dateFormatted}.pdf`);
+}
+
+/**
+ * Draws the standard page layout of a single report:
+ * Page 1: Metadata blocks, Layer Details table.
+ * Page 2: Summary values table, Layer-wise shaft calculations table with integrated Final Results, Formula references.
+ */
+function drawSingleReportPages(doc, report, reportNum) {
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const margin = 15;
   const contentW = pageW - margin * 2;
 
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('en-IN', {
-    year: 'numeric', month: 'long', day: 'numeric',
-  });
-  const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-
-  // ── Computed Geometry ─────────────────────────────────────────────────────
-  const d = parseFloat(diameter) || 0;
+  const d = report.diameter;
   const perimeter = PI * d;
   const tipArea = (PI * d * d) / 4;
-  const totalQs = layerResults.reduce((s, lr) => s + lr.shaftResistance, 0);
+  const totalQs = report.calculations.reduce((s, lr) => s + lr.shaftResistance, 0);
+  const totalLength = report.pileLength;
+  const bearingLayer = report.bearingLayer;
+  const gwLevel = report.groundwater;
 
-  // ── Colors ────────────────────────────────────────────────────────────────
-  const BLUE = [37, 99, 235];      // primary-600
-  const DARK = [30, 41, 59];       // slate-800
-  const LIGHT_BLUE = [239, 246, 255]; // primary-50
-  const LIGHT_GRAY = [248, 250, 252]; // slate-50
-  const GREEN = [22, 163, 74];     // green-600
-  const LIGHT_GREEN = [240, 253, 244];
+  // Format date
+  const dateObj = new Date(report.createdAt);
+  const dayStr = String(dateObj.getDate()).padStart(2, '0');
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const monthStr = monthNames[dateObj.getMonth()];
+  const dateFormatted = `${dayStr}-${monthStr}-${dateObj.getFullYear()}`;
+  const timeStr = dateObj.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
   let y = margin;
 
   // ── Header Banner ─────────────────────────────────────────────────────────
-  doc.setFillColor(...BLUE);
-  doc.rect(0, 0, pageW, 38, 'F');
+  doc.setFillColor(30, 41, 59);
+  doc.rect(0, doc.internal.getCurrentPageInfo().pageNumber === 1 && doc.internal.getNumberOfPages() === 1 ? 0 : 0, pageW, 38, 'F');
 
   // Title
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
+  doc.setFontSize(16);
   doc.setTextColor(255, 255, 255);
-  doc.text('PILE CAPACITY ANALYSIS REPORT', margin, 16);
+  doc.text(`PILE CAPACITY REPORT #${reportNum}`, margin, 15);
 
   // Subtitle
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(190, 210, 255);
-  doc.text('Geotechnical Engineering · Axial Pile Capacity Calculation', margin, 24);
+  doc.setFontSize(8.5);
+  doc.setTextColor(203, 213, 225);
+  doc.text(`Geotechnical report details for pile diameter ${formatEngineeringNumber(d)} m`, margin, 22);
 
-  // Date
-  doc.setFontSize(8);
-  doc.setTextColor(190, 210, 255);
-  doc.text(`Generated: ${dateStr} at ${timeStr}`, margin, 31);
+  // Report details
+  doc.setFontSize(7.5);
+  doc.text(`Report ID: ${report.id}  |  Calculated: ${dateFormatted} at ${timeStr}`, margin, 29);
 
-  // Right: small logo text
+  // Right banner info
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(255, 255, 255);
-  doc.text('Pile Capacity Calculator', pageW - margin, 20, { align: 'right' });
+  doc.text('Pile Capacity Calculator', pageW - margin, 18, { align: 'right' });
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7);
-  doc.setTextColor(190, 210, 255);
-  doc.text('v1.0 · For Design Reference Only', pageW - margin, 26, { align: 'right' });
+  doc.setTextColor(203, 213, 225);
+  doc.text('Software Version: v1.0', pageW - margin, 24, { align: 'right' });
+  doc.text('Academic Design Reference', pageW - margin, 29, { align: 'right' });
 
   y = 48;
-
-  // ── Calculation of Totals ────────────────────────────────────────────────
-  const totalClaySF = layerResults.reduce((s, lr) => s + (lr.skinFrictionClay ?? 0), 0);
-  const totalSandSF = layerResults.reduce((s, lr) => s + (lr.skinFrictionSand ?? 0), 0);
 
   // ── Section 1 & 2: Project Details & Pile Geometry (Side-by-Side) ─────────
   const colW = (contentW - 10) / 2;
 
   // Heading for 1. Project Details
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
+  doc.setFontSize(10);
   doc.setTextColor(...DARK);
   doc.text('1. Project Details', margin, y);
 
@@ -112,13 +298,14 @@ export function generatePDF(formData, results) {
     tableWidth: colW,
     head: [['Parameter', 'Value']],
     body: [
-      ['Pile Diameter', `${fmt(d, 3)} m`],
-      ['Number of Soil Layers', `${layers.length}`],
-      ['Factor of Safety', `${FOS}`],
-      ['Date', `${dateStr}`],
+      ['Pile Diameter', `${formatEngineeringNumber(d)} m`],
+      ['Pile Length', `${formatEngineeringNumber(totalLength)} m`],
+      ['Factor of Safety', '2.500'],
+      ['Bearing Layer', bearingLayer],
+      ['Groundwater Level', gwLevel !== '—' ? gwLevel : 'Not Encountered'],
     ],
-    styles: { fontSize: 8.5, cellPadding: 2.5, textColor: DARK },
-    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+    styles: { fontSize: 8, cellPadding: 2.2, textColor: DARK },
+    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
     alternateRowStyles: { fillColor: LIGHT_GRAY },
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 50 } },
     theme: 'striped',
@@ -133,42 +320,42 @@ export function generatePDF(formData, results) {
     tableWidth: colW,
     head: [['Parameter', 'Value']],
     body: [
-      ['Diameter (D)', `${fmt(d, 3)} m`],
-      ['Perimeter (C = πD)', `${fmt(perimeter, 4)} m`],
-      ['Tip Area (Ap = πD²/4)', `${fmt(tipArea, 6)} m²`],
+      ['Diameter (D)', `${formatEngineeringNumber(d)} m`],
+      ['Perimeter (C = πD)', `${formatEngineeringNumber(perimeter)} m`],
+      ['Tip Area (Ap = πD²/4)', `${formatEngineeringNumber(tipArea)} m²`],
     ],
-    styles: { fontSize: 8.5, cellPadding: 2.5, textColor: DARK },
-    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+    styles: { fontSize: 8, cellPadding: 2.2, textColor: DARK },
+    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
     alternateRowStyles: { fillColor: LIGHT_GRAY },
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: 45 } },
     theme: 'striped',
   });
 
   const table2FinalY = doc.lastAutoTable.finalY;
-  y = Math.max(table1FinalY, table2FinalY) + 8;
+  y = Math.max(table1FinalY, table2FinalY) + 6;
 
   // ── Section 3: Layer Details ──────────────────────────────────────────────
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
+  doc.setFontSize(10);
   doc.setTextColor(...DARK);
   doc.text('3. Layer Details', margin, y);
   y += 4;
 
-  const layerRows = layers.map((layer, i) => {
+  const layerRows = report.inputs.layers.map((layer, i) => {
     const dn = d || 1;
     const ld = (parseFloat(layer.thickness) || 0) / dn;
     let params = '';
     if (layer.soilType === 'clay') {
-      params = `α = ${layer.alpha || '—'},  Cu = ${layer.cohesion || '—'} kN/m²`;
+      params = `α = ${formatEngineeringNumber(layer.alpha)},  Cu = ${formatEngineeringNumber(layer.cohesion)} kN/m²`;
     } else if (layer.soilType === 'sand') {
-      params = `K = ${layer.K || '—'},  φ = ${layer.phi || '—'}°`;
-      if (ld < 15) params += `,  ov_top = ${layer.ovTop || '—'},  ov_bot = ${layer.ovBottom || '—'} kN/m²`;
-      else params += `,  γ = ${layer.bulkUnit || '—'} kN/m³,  WT = ${layer.waterTableDepth || '—'} m`;
+      params = `K = ${formatEngineeringNumber(layer.K)},  φ = ${formatEngineeringNumber(layer.phi)}°`;
+      if (ld < 15) params += `,  ov_top = ${formatEngineeringNumber(layer.ovTop)},  ov_bot = ${formatEngineeringNumber(layer.ovBottom)} kN/m²`;
+      else params += `,  γ = ${formatEngineeringNumber(layer.bulkUnit)} kN/m³,  WT = ${formatEngineeringNumber(layer.waterTableDepth)} m`;
     }
     return [
       `Layer ${i + 1}`,
       layer.soilType ? layer.soilType.charAt(0).toUpperCase() + layer.soilType.slice(1) : '—',
-      `${layer.thickness || '—'} m`,
+      `${formatEngineeringNumber(layer.thickness)} m`,
       layer.soilType === 'sand' ? (ld < 15 ? 'L/D < 15' : 'L/D ≥ 15') : '—',
       params,
     ];
@@ -179,42 +366,53 @@ export function generatePDF(formData, results) {
     margin: { left: margin, right: margin },
     head: [['#', 'Soil Type', 'Thickness', 'L/D Check', 'Input Parameters']],
     body: layerRows,
-    styles: { fontSize: 8, cellPadding: 2.5, textColor: DARK },
-    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
+    styles: { fontSize: 7.5, cellPadding: 2.2, textColor: DARK },
+    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
     alternateRowStyles: { fillColor: LIGHT_GRAY },
     columnStyles: {
       0: { fontStyle: 'bold', cellWidth: 20 },
       1: { fontStyle: 'bold', cellWidth: 24 },
-      2: { halign: 'center', cellWidth: 22 },
-      3: { halign: 'center', cellWidth: 22 },
+      2: { halign: 'right', cellWidth: 24 },
+      3: { halign: 'center', cellWidth: 24 },
     },
     theme: 'striped',
   });
 
-  y = doc.lastAutoTable.finalY + 8;
+  y = doc.lastAutoTable.finalY + 6;
 
-  // Start new page to keep summary and tables together nicely
+  if (y < pageH - 25) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    const disclaimerMsg = "Note: All capacities are calculated based on the selected engineering methods and user-provided soil parameters. Results should be verified by a qualified geotechnical engineer before use in design.";
+    doc.text(disclaimerMsg, margin, y + 4);
+  }
+
+  // ─── PAGE 2: TABLES & CALCULATIONS ─────────────────────────────────────────
   doc.addPage();
   y = margin;
 
   // ── Section 4: Calculation Summary ────────────────────────────────────────
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
+  doc.setFontSize(10);
   doc.setTextColor(...DARK);
   doc.text('4. Calculation Summary', margin, y);
   y += 4;
+
+  const totalClaySF = report.calculations.reduce((s, lr) => s + (lr.skinFrictionClay ?? 0), 0);
+  const totalSandSF = report.calculations.reduce((s, lr) => s + (lr.skinFrictionSand ?? 0), 0);
 
   autoTable(doc, {
     startY: y,
     margin: { left: margin, right: margin },
     head: [['Resistance Component', 'Symbol / Equation', 'Calculated Value']],
     body: [
-      ['Clay Shaft Resistance', 'ΣQs (Clay)', `${fmt(totalClaySF)} kN`],
-      ['Sand Shaft Resistance', 'ΣQs (Sand)', `${fmt(totalSandSF)} kN`],
-      ['Total Shaft Resistance', 'ΣQs = ΣQs(Clay) + ΣQs(Sand)', `${fmt(totalQs)} kN`],
-      ['End Bearing Resistance', 'Qp', `${fmt(Qp)} kN`],
-      ['Ultimate Pile Capacity', 'Qu = ΣQs + Qp', `${fmt(Qu)} kN`],
-      ['Allowable Capacity (Safe Load)', `Qa = Qu / FOS  (FOS = ${FOS})`, `${fmt(Qa)} kN`],
+      ['Clay Shaft Resistance', 'ΣQs (Clay)', `${formatEngineeringNumber(totalClaySF)} kN`],
+      ['Sand Shaft Resistance', 'ΣQs (Sand)', `${formatEngineeringNumber(totalSandSF)} kN`],
+      ['Total Shaft Resistance', 'ΣQs = ΣQs(Clay) + ΣQs(Sand)', `${formatEngineeringNumber(totalQs)} kN`],
+      ['End Bearing Resistance', 'Qp', `${formatEngineeringNumber(report.outputs.Qp)} kN`],
+      ['Ultimate Pile Capacity', 'Qu = ΣQs + Qp', `${formatEngineeringNumber(report.outputs.Qu)} kN`],
+      ['Allowable Capacity (Safe Load)', `Qa = Qu / FOS  (FOS = ${FOS})`, `${formatEngineeringNumber(report.outputs.Qa)} kN`],
     ],
     styles: { fontSize: 8.5, cellPadding: 2.5, textColor: DARK },
     headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
@@ -224,105 +422,82 @@ export function generatePDF(formData, results) {
       1: { textColor: [100, 116, 139], cellWidth: 120 },
       2: { halign: 'right', fontStyle: 'bold' }
     },
-    didParseCell: (data) => {
-      if (data.row.index === 4) {
-        data.cell.styles.fillColor = [241, 245, 249];
-      } else if (data.row.index === 5) {
-        data.cell.styles.fillColor = LIGHT_GREEN;
-        data.cell.styles.textColor = GREEN;
-      }
-    },
     theme: 'striped',
   });
 
   y = doc.lastAutoTable.finalY + 8;
 
-  // ── Section 5: Layer-wise Resistance Table ────────────────────────────────
-  if (y > pageH - 60) {
+  // ── Section 5: Layer-wise Shaft Resistance Calculations (with Integrated Final Results) ──
+  if (y > pageH - 75) {
     doc.addPage();
     y = margin;
   }
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10.5);
+  doc.setFontSize(10);
   doc.setTextColor(...DARK);
-  doc.text('5. Layer-wise Resistance Table', margin, y);
+  doc.text('5. Layer-wise Shaft Resistance Calculations', margin, y);
   y += 4;
 
-  const hasClay = layerResults.some(lr => lr.soilType?.toLowerCase() === 'clay');
-  const hasSand = layerResults.some(lr => lr.soilType?.toLowerCase() === 'sand');
+  const headRow = [
+    'Layer', 
+    'Soil Type', 
+    'Thickness (m)', 
+    'Engineering Method', 
+    'Clay Skin Friction (kN)', 
+    'Sand Skin Friction (kN)', 
+    'Total Shaft Resistance Qs (kN)'
+  ];
 
-  const showClay = hasClay;
-  const showSand = hasSand;
+  const resultRows = report.calculations.map((lr, i) => {
+    const orig = report.inputs.layers[i] || {};
+    const method = getEngineeringMethod(lr, d);
 
-  const headRow = ['Layer', 'Soil Type', 'Thick.', 'Method'];
-  if (showClay) headRow.push('Clay SF');
-  if (showSand) headRow.push('Sand SF');
-  headRow.push('Qs');
-  headRow.push('Qp');
-  headRow.push('Qu');
-  headRow.push('Qa');
+    const isClay = lr.soilType?.toLowerCase() === 'clay';
+    const isSand = lr.soilType?.toLowerCase() === 'sand';
 
-  const resultRows = layerResults.map((lr, i) => {
-    const orig = layers[i] || {};
-    const ld = (parseFloat(orig.thickness) || 0) / d;
-    const method = lr.soilType === 'clay' ? METHOD.clay : ld < 15 ? METHOD.sandLow : METHOD.sandHigh;
+    const claySF = isClay ? `${formatEngineeringNumber(lr.skinFrictionClay ?? lr.shaftResistance)} kN` : '-';
+    const sandSF = isSand ? `${formatEngineeringNumber(lr.skinFrictionSand ?? lr.shaftResistance)} kN` : '-';
 
-    const row = [
+    return [
       `${lr.layer ?? (i + 1)}`,
-      lr.soilType ? lr.soilType.charAt(0).toUpperCase() + lr.soilType.slice(1) : '—',
-      `${lr.thickness ?? '—'} m`,
+      lr.soilType ? lr.soilType.charAt(0).toUpperCase() + lr.soilType.slice(1) : '-',
+      `${formatEngineeringNumber(lr.thickness)} m`,
       method,
+      claySF,
+      sandSF,
+      `${formatEngineeringNumber(lr.shaftResistance)} kN`
     ];
-    if (showClay) {
-      row.push(lr.soilType?.toLowerCase() === 'clay' ? `${fmt(lr.skinFrictionClay ?? lr.shaftResistance)} kN` : '—');
-    }
-    if (showSand) {
-      row.push(lr.soilType?.toLowerCase() === 'sand' ? `${fmt(lr.skinFrictionSand ?? lr.shaftResistance)} kN` : '—');
-    }
-    row.push(`${fmt(lr.shaftResistance)} kN`);
-    row.push(`${fmt(Qp)} kN`);
-    row.push(`${fmt(Qu)} kN`);
-    row.push(`${fmt(Qa)} kN`);
-    return row;
   });
 
-  // Total row
-  const totalRow = ['', '', '', 'TOTALS (ΣQs)'];
-  if (showClay) {
-    totalRow.push(totalClaySF > 0 ? `${fmt(totalClaySF)} kN` : '0.000 kN');
-  }
-  if (showSand) {
-    totalRow.push(totalSandSF > 0 ? `${fmt(totalSandSF)} kN` : '0.000 kN');
-  }
-  totalRow.push(`${fmt(totalQs)} kN`);
-  totalRow.push(`${fmt(Qp)} kN`);
-  totalRow.push(`${fmt(Qu)} kN`);
-  totalRow.push(`${fmt(Qa)} kN`);
-  resultRows.push(totalRow);
+  // Append Section Header for Final Results directly inside the table rows
+  resultRows.push([
+    { content: 'FINAL RESULTS', colSpan: 7, styles: { halign: 'center', fontStyle: 'bold', fillColor: [243, 244, 246] } }
+  ]);
 
-  // Column styles mapping
+  // Append Qp, Qu, and Qa rows inside the table
+  resultRows.push([
+    { content: 'End Bearing Capacity (Qp)', colSpan: 6, styles: { fontStyle: 'bold' } },
+    `${formatEngineeringNumber(report.outputs.Qp)} kN`
+  ]);
+  resultRows.push([
+    { content: 'Ultimate Capacity (Qu)', colSpan: 6, styles: { fontStyle: 'bold' } },
+    `${formatEngineeringNumber(report.outputs.Qu)} kN`
+  ]);
+  resultRows.push([
+    { content: 'Allowable Capacity (Qa)', colSpan: 6, styles: { fontStyle: 'bold' } },
+    `${formatEngineeringNumber(report.outputs.Qa)} kN`
+  ]);
+
   const colStyles = {
-    0: { halign: 'center', cellWidth: 12 },
-    1: { fontStyle: 'bold', cellWidth: 18 },
-    2: { halign: 'center', cellWidth: 16 },
+    0: { halign: 'center', cellWidth: 15 },
+    1: { halign: 'center', cellWidth: 25 },
+    2: { halign: 'right', cellWidth: 28 },
+    3: { halign: 'center', cellWidth: 79 },
+    4: { halign: 'right', cellWidth: 40 },
+    5: { halign: 'right', cellWidth: 40 },
+    6: { halign: 'right', cellWidth: 40 },
   };
-  let colIndex = 4;
-  if (showClay) {
-    colStyles[colIndex] = { halign: 'right' };
-    colIndex++;
-  }
-  if (showSand) {
-    colStyles[colIndex] = { halign: 'right' };
-    colIndex++;
-  }
-  colStyles[colIndex] = { halign: 'right', fontStyle: 'bold' }; // Qs
-  colIndex++;
-  colStyles[colIndex] = { halign: 'right' }; // Qp
-  colIndex++;
-  colStyles[colIndex] = { halign: 'right' }; // Qu
-  colIndex++;
-  colStyles[colIndex] = { halign: 'right', fontStyle: 'bold' }; // Qa
 
   autoTable(doc, {
     startY: y,
@@ -330,16 +505,9 @@ export function generatePDF(formData, results) {
     head: [headRow],
     body: resultRows,
     styles: { fontSize: 7.5, cellPadding: 2, textColor: DARK },
-    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
+    headStyles: { fillColor: DARK, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7, halign: 'center' },
     alternateRowStyles: { fillColor: LIGHT_GRAY },
     columnStyles: colStyles,
-    didParseCell: (data) => {
-      if (data.row.index === resultRows.length - 1) {
-        data.cell.styles.fillColor = LIGHT_BLUE;
-        data.cell.styles.textColor = BLUE;
-        data.cell.styles.fontStyle = 'bold';
-      }
-    },
     theme: 'striped',
   });
 
@@ -359,10 +527,10 @@ export function generatePDF(formData, results) {
 
   const formulas = [
     ['Clay Shaft', 'Qs = α × Cu × C × L'],
-    ['Sand Shaft (L/D < 15)', 'Qs = K × σ\'v_avg × tan(δ) × C × L    where σ\'v_avg = (σ_top + σ_bot)/2'],
-    ['Sand Shaft (L/D ≥ 15)', 'Qs = K × σ\'v_avg × tan(δ) × C × L    where σ\'v computed from unit weights'],
+    ['Sand Shaft (Effective Stress)', 'Qs = K × σ\'v_avg × tan(δ) × C × L    where δ = 0.75φ, σ\'v_avg = (σ_top + σ_bot)/2'],
+    ['Sand Shaft (Critical Depth)', 'Qs = K × σ\'v_avg × tan(δ) × C × L    where σ\'v capped at critical depth Dc = 15D'],
     ['Clay End Bearing', 'Qp = 9 × Cu_tip × Ap  (Skempton)'],
-    ['Sand End Bearing', 'Qp = σ\'v_tip × Nq × Ap'],
+    ['Sand End Bearing', 'Qp = σ\'v_tip × Nq × Ap  (overburden capped at Dc = 15D)'],
     ['Ultimate Capacity', 'Qu = ΣQs + Qp'],
     ['Allowable Capacity', `Qa = Qu / FOS  (FOS = ${FOS})`],
   ];
@@ -378,23 +546,38 @@ export function generatePDF(formData, results) {
     },
     theme: 'striped',
   });
+}
 
-  // ── Footer ────────────────────────────────────────────────────────────────
-  const totalPages = doc.internal.getNumberOfPages();
-  for (let p = 1; p <= totalPages; p++) {
-    doc.setPage(p);
-    doc.setFillColor(248, 250, 252);
-    doc.rect(0, pageH - 10, pageW, 10, 'F');
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(148, 163, 184);
-    doc.text(
-      'This report is for engineering reference only. Consult a licensed geotechnical engineer for design decisions.',
-      margin,
-      pageH - 3.5
-    );
-    doc.text(`Page ${p} of ${totalPages}`, pageW - margin, pageH - 3.5, { align: 'right' });
-  }
+/**
+ * Draws the standard disclaimer and page numbers in the page footer.
+ */
+function drawFooter(doc, p, totalPages, reportId, dateStr) {
+  const pageH = doc.internal.pageSize.getHeight();
+  const pageW = doc.internal.pageSize.getWidth();
+  const margin = 15;
 
-  doc.save(`pile-capacity-report-${now.toISOString().slice(0, 10)}.pdf`);
+  doc.setFillColor(248, 250, 252);
+  doc.rect(0, pageH - 12, pageW, 12, 'F');
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184);
+
+  // Left Footer
+  doc.text(
+    `Report ID: ${reportId}  |  Version: v1.0  |  Generated On: ${dateStr}`,
+    margin,
+    pageH - 4.5
+  );
+
+  // Right Footer
+  doc.text(`Page ${p} of ${totalPages}`, pageW - margin, pageH - 4.5, { align: 'right' });
+
+  // Center Disclaimer
+  doc.setFontSize(6.5);
+  doc.text(
+    'Disclaimer: This report is for engineering reference only. Consult a licensed geotechnical engineer for design decisions.',
+    pageW / 2,
+    pageH - 8.5,
+    { align: 'center' }
+  );
 }

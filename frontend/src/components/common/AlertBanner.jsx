@@ -1,3 +1,5 @@
+import React from 'react';
+
 /**
  * Alert banner for success / error feedback.
  * type: 'success' | 'error' | 'info'
@@ -86,4 +88,4 @@ const AlertBanner = ({ type = 'info', title, message, onClose }) => {
   );
 };
 
-export default AlertBanner;
+export default React.memo(AlertBanner);

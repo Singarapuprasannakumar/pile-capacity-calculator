@@ -1,3 +1,5 @@
+import React from 'react';
+
 /**
  * Tooltip component – wraps any element and shows a description bubble on hover.
  * Usage: <Tooltip text="Engineering definition here"><Label /></Tooltip>
@@ -9,4 +11,4 @@ const Tooltip = ({ text, children }) => (
   </div>
 );
 
-export default Tooltip;
+export default React.memo(Tooltip);

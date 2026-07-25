@@ -1,4 +1,5 @@
-import Tooltip from './Tooltip';
+import React from 'react';
+import Tooltip from '../common/Tooltip';
 
 /**
  * Reusable labelled input field with optional tooltip and validation error.
@@ -70,4 +71,4 @@ const FormField = ({
   </div>
 );
 
-export default FormField;
+export default React.memo(FormField);

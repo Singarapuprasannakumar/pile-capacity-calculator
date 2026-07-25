@@ -1,5 +1,6 @@
+import React from 'react';
 import FormField from './FormField';
-import Tooltip from './Tooltip';
+import Tooltip from '../common/Tooltip';
 
 /**
  * Renders the form for a single soil layer.
@@ -225,4 +226,4 @@ const SoilLayerCard = ({ index, layer, onChange, errors = {}, diameter }) => {
   );
 };
 
-export default SoilLayerCard;
+export default React.memo(SoilLayerCard);
