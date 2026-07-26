@@ -28,7 +28,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from pydantic import BaseModel, Field
 from schemas.sbc import SbcRequest, SbcResponse
 from calculators.sbc_calculator import calculate_sbc
-from routers import footing, soil
+from routers import footing, soil, under_reamed
 
 
 # ─── Geotechnical Engineering Configuration Constants ─────────────────────────
@@ -283,9 +283,13 @@ env_origins = [
 # Standard local development and default production origins
 default_origins = [
     "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
     "http://localhost:3000",
     "http://localhost:8080",
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
+    "http://127.0.0.1:5175",
     "http://127.0.0.1:3000",
     "https://pile-capacity-calculator.vercel.app"
 ]
@@ -874,5 +878,8 @@ app.include_router(footing.router)
 
 # ─── Include Soil Router ───
 app.include_router(soil.router)
+
+# ─── Include Under-Reamed Router ───
+app.include_router(under_reamed.router)
 
 
