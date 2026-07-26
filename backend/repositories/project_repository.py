@@ -63,6 +63,24 @@ def get_projects(search=None, status=None, sort_by=None):
     
     return [dict_from_row(row) for row in rows]
 
+def get_project_by_id(project_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+    SELECT p.*, s.site_name, s.site_coordinates, s.ground_level, s.groundwater_level,
+           s.weather, s.elevation, s.site_notes, COUNT(r.id) as calculations_count 
+    FROM projects p
+    LEFT JOIN site_information s ON p.id = s.project_id
+    LEFT JOIN reports r ON p.id = r.project_id
+    WHERE p.id = ? AND p.is_deleted = 0
+    GROUP BY p.id
+    """, (project_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    return dict_from_row(row) if row else None
+
 def get_project_by_uuid(project_uuid):
     conn = get_db_connection()
     cursor = conn.cursor()

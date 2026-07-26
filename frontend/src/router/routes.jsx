@@ -10,8 +10,8 @@ import UnderReamedPile from '../pages/UnderReamedPile';
 import Projects from '../pages/Projects';
 import CreateProject from '../pages/CreateProject';
 import ProjectWorkspace from '../pages/ProjectWorkspace';
-import Reports from '../pages/Reports';
-import Settings from '../pages/Settings';
+import BoreholeWorkspace from '../pages/BoreholeWorkspace';
+import Antigravity from '../pages/Antigravity';
 
 const AppRoutes = () => {
   return (
@@ -26,11 +26,12 @@ const AppRoutes = () => {
         <Route path="projects" element={<Projects />} />
         <Route path="projects/new" element={<CreateProject />} />
         <Route path="projects/:uuid" element={<ProjectWorkspace />} />
-        <Route path="reports" element={<Reports />} />
-        <Route path="settings" element={<Settings />} />
+        <Route path="projects/:uuid/boreholes/:boreholeUuid" element={<BoreholeWorkspace />} />
+        <Route path="antigravity" element={<Antigravity />} />
       </Route>
     </Routes>
   );
 };
 
 export default AppRoutes;
+

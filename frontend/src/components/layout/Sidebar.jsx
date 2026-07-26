@@ -4,7 +4,7 @@ import NavigationItem from './NavigationItem';
 import { ENGINEERING_MODULES } from '../../utils/constants';
 
 const Sidebar = ({ isOpen, onClose }) => {
-  const categories = ['Main', 'Foundation Engineering', 'Geotechnical Engineering', 'Project Management', 'System'];
+  const categories = ['Main', 'Foundation Engineering', 'Geotechnical Engineering', 'Project Management'];
 
   const getModulesByCategory = (cat) => {
     return ENGINEERING_MODULES.filter(m => m.category === cat);

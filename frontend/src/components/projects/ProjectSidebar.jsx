@@ -8,7 +8,7 @@ const ProjectSidebar = ({ activeTab, onTabChange, onLaunchModule }) => {
   const menuItems = [
     { id: 'overview', label: 'Overview', icon: Info },
     { id: 'site-info', label: 'Site Information', icon: MapPin },
-    { id: 'soil-investigation', label: 'Soil Investigation', icon: Database },
+    { id: 'boreholes', label: 'Boreholes', icon: Database },
   ];
 
   const engineeringModules = [

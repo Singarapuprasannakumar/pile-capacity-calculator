@@ -1,7 +1,8 @@
 import React from 'react';
-import { ClipboardList, Database, CheckSquare, Calendar, User } from 'lucide-react';
+import { Database, CheckSquare, Calendar, User } from 'lucide-react';
 
-const ProjectStatistics = ({ project, reportsCount, calcsCount }) => {
+
+const ProjectStatistics = ({ project, calcsCount }) => {
   const getStatusColor = (status) => {
     switch (status) {
       case 'Draft': return 'bg-gray-100 text-gray-700 border-gray-200';
@@ -35,17 +36,7 @@ const ProjectStatistics = ({ project, reportsCount, calcsCount }) => {
         </div>
       </div>
 
-      {/* Reports Generated */}
-      <div className="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm flex items-center gap-4">
-        <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
-          <ClipboardList size={24} />
-        </div>
-        <div>
-          <span className="text-xs text-gray-400 font-bold uppercase tracking-wider block">Saved Reports</span>
-          <span className="text-2xl font-black text-gray-800">{reportsCount}</span>
-        </div>
-      </div>
-
+      
       {/* Project Status */}
       <div className="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm flex items-center gap-4">
         <div className="p-3 bg-teal-50 text-teal-600 rounded-xl">

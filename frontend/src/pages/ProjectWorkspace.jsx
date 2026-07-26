@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   Loader2, AlertCircle, MapPin, Briefcase, Calendar, ShieldAlert,
   Save, Landmark, Layers, FileSpreadsheet, HardHat, TrendingUp, Info, 
-  Trash2, FileText, CheckCircle2, History, AlertTriangle, ExternalLink
+  Trash2, CheckCircle2, History, AlertTriangle, ExternalLink
 } from 'lucide-react';
 import PageTitle from '../components/common/PageTitle';
 import ProjectHeader from '../components/projects/ProjectHeader';
@@ -11,15 +11,16 @@ import ProjectSidebar from '../components/projects/ProjectSidebar';
 import ProjectStatistics from '../components/projects/ProjectStatistics';
 import ProjectForm from '../components/projects/ProjectForm';
 import { 
-  getProject, updateProject, updateSiteInfo, getReports, deleteReport, getActivities, getCalculations 
+  getProject, updateProject, updateSiteInfo, getActivities, getCalculations 
 } from '../api/projectApi';
+import Boreholes from './Boreholes';
 
 const ProjectWorkspace = () => {
   const { uuid } = useParams();
   const navigate = useNavigate();
 
   const [project, setProject] = useState(null);
-  const [reports, setReports] = useState([]);
+  // const [reports, setReports] = useState([]);
   const [calculations, setCalculations] = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,14 +64,12 @@ const ProjectWorkspace = () => {
         site_notes: proj.site_notes || ''
       });
 
-      // Fetch reports, calculations and activity logs concurrently
-      const [reps, calcs, acts] = await Promise.all([
-        getReports(uuid),
+      // Fetch calculations and activity logs concurrently
+      const [calcs, acts] = await Promise.all([
         getCalculations(uuid),
         getActivities(uuid)
       ]);
       
-      setReports(reps);
       setCalculations(calcs);
       setActivities(acts);
     } catch (err) {
@@ -137,21 +136,6 @@ const ProjectWorkspace = () => {
     }
   };
 
-  const handleDeleteReport = async (reportId) => {
-    if (!window.confirm("Are you sure you want to delete this report from the project history?")) return;
-    try {
-      await deleteReport(uuid, reportId);
-      setReports(prev => prev.filter(r => r.id !== reportId));
-      
-      // Refresh activity
-      const acts = await getActivities(uuid);
-      setActivities(acts);
-    } catch (err) {
-      console.error("Error deleting report:", err);
-      alert("Failed to delete report.");
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-40 gap-3 text-gray-500">
@@ -186,7 +170,6 @@ const ProjectWorkspace = () => {
       {/* Statistics counters */}
       <ProjectStatistics 
         project={project} 
-        reportsCount={reports.length}
         calcsCount={calculations.length} 
       />
 
@@ -379,70 +362,9 @@ const ProjectWorkspace = () => {
             </form>
           )}
 
-          {/* Tab 3: Soil Investigation */}
-          {activeTab === 'soil-investigation' && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-bold text-gray-800 border-b border-gray-50 pb-2">Soil Investigation (Borehole Logging)</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  Manage soil strata profiles, SPT blow counts (N-values), and borehole logs.
-                </p>
-              </div>
-
-              <div className="p-8 bg-blue-50/50 border border-dashed border-blue-200 rounded-2xl flex flex-col items-center justify-center text-center">
-                <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-3">
-                  <Database size={24} />
-                </div>
-                <h4 className="text-md font-bold text-gray-800">Borehole Stratigraphy Workspace</h4>
-                <p className="text-sm text-gray-500 max-w-md mt-2">
-                  Define multiple boreholes and soil layers. Engineering modules can read this data to automate pile and bearing capacity calculations!
-                </p>
-                <span className="inline-block mt-4 px-3 py-1 bg-blue-600 text-white text-xs font-extrabold rounded-full uppercase tracking-wider">
-                  Upcoming Module (v2.3)
-                </span>
-              </div>
-
-              {/* Sample logs */}
-              <div>
-                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Mock Site Stratigraphy (Trial Pits)</h4>
-                <div className="overflow-x-auto border border-gray-100 rounded-xl">
-                  <table className="w-full text-left border-collapse text-sm">
-                    <thead>
-                      <tr className="bg-gray-50 text-gray-600 border-b border-gray-100">
-                        <th className="py-2.5 px-4 font-semibold">Borehole ID</th>
-                        <th className="py-2.5 px-4 font-semibold">Strata Depth (m)</th>
-                        <th className="py-2.5 px-4 font-semibold">USCS Group Symbol</th>
-                        <th className="py-2.5 px-4 font-semibold">Soil Description</th>
-                        <th className="py-2.5 px-4 font-semibold">Average N-Value</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50 text-gray-700">
-                      <tr>
-                        <td className="py-2.5 px-4 font-semibold">BH-1</td>
-                        <td className="py-2.5 px-4">0.0 – 3.5m</td>
-                        <td className="py-2.5 px-4"><span className="px-2 py-0.5 bg-yellow-50 border border-yellow-100 text-yellow-700 rounded-md text-xs font-semibold">CH</span></td>
-                        <td className="py-2.5 px-4">Highly expansive dark gray clay (Black Cotton Soil)</td>
-                        <td className="py-2.5 px-4">6</td>
-                      </tr>
-                      <tr>
-                        <td className="py-2.5 px-4 font-semibold">BH-1</td>
-                        <td className="py-2.5 px-4">3.5 – 12.0m</td>
-                        <td className="py-2.5 px-4"><span className="px-2 py-0.5 bg-orange-50 border border-orange-100 text-orange-700 rounded-md text-xs font-semibold">SM</span></td>
-                        <td className="py-2.5 px-4">Medium dense silty sand with gravelly lens</td>
-                        <td className="py-2.5 px-4">18</td>
-                      </tr>
-                      <tr>
-                        <td className="py-2.5 px-4 font-semibold">BH-2</td>
-                        <td className="py-2.5 px-4">0.0 – 4.0m</td>
-                        <td className="py-2.5 px-4"><span className="px-2 py-0.5 bg-yellow-50 border border-yellow-100 text-yellow-700 rounded-md text-xs font-semibold">CH</span></td>
-                        <td className="py-2.5 px-4">Inorganic clay of high plasticity</td>
-                        <td className="py-2.5 px-4">8</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
+          {/* Tab 3: Boreholes Workspace */}
+          {activeTab === 'boreholes' && (
+            <Boreholes projectUuid={uuid} />
           )}
 
           {/* Tab 4: Calculations History */}
@@ -534,73 +456,7 @@ const ProjectWorkspace = () => {
             </div>
           )}
 
-          {/* Tab 5: Reports Center */}
-          {activeTab === 'reports' && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-bold text-gray-800 border-b border-gray-50 pb-2">Unified Report Center</h3>
-                <p className="text-sm text-gray-500 mt-1">
-                  View and manage exported PDFs, Excel logs, and trial reports generated across all suite calculators.
-                </p>
-              </div>
-
-              {reports.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center border border-dashed border-gray-100 rounded-xl">
-                  <FileText className="text-gray-300 mb-2" size={40} />
-                  <span className="text-sm font-semibold text-gray-500">No reports generated yet.</span>
-                  <p className="text-xs text-gray-400 mt-1 max-w-xs">
-                    Run calculations in any module and click "Export to PDF/Excel" to save the report to this repository.
-                  </p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto border border-gray-100 rounded-xl">
-                  <table className="w-full text-left border-collapse text-sm">
-                    <thead>
-                      <tr className="bg-gray-50 text-gray-600 border-b border-gray-100">
-                        <th className="py-3 px-4 font-semibold">Report ID</th>
-                        <th className="py-3 px-4 font-semibold">Engineering Module</th>
-                        <th className="py-3 px-4 font-semibold">Engineer Name</th>
-                        <th className="py-3 px-4 font-semibold">Date Exported</th>
-                        <th className="py-3 px-4 font-semibold text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50 text-gray-700">
-                      {reports.map(rep => (
-                        <tr key={rep.id}>
-                          <td className="py-3 px-4 font-semibold text-blue-600">
-                            Report #{rep.report_number}
-                          </td>
-                          <td className="py-3 px-4 capitalize">
-                            {rep.module.replace('-', ' ')}
-                          </td>
-                          <td className="py-3 px-4">{rep.engineer}</td>
-                          <td className="py-3 px-4">
-                            {new Date(rep.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                          </td>
-                          <td className="py-3 px-4 text-right flex items-center justify-end gap-3.5">
-                            <button
-                              onClick={() => alert(`Review report details:\nID: ${rep.id}\nEngineer: ${rep.engineer}\nResults Summary: ${JSON.stringify(rep.results)}`)}
-                              className="text-xs font-semibold text-gray-500 hover:text-gray-800"
-                            >
-                              Preview
-                            </button>
-                            <button
-                              onClick={() => handleDeleteReport(rep.id)}
-                              className="text-xs font-semibold text-red-500 hover:text-red-700"
-                            >
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tab 6: Activity Logs */}
+          {/* Tab 5: Activity Logs */}
           {activeTab === 'activities' && (
             <div className="space-y-6">
               <div>

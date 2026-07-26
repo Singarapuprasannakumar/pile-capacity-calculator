@@ -1,13 +1,10 @@
-import {
-  LayoutDashboard,
+import { LayoutDashboard,
   Layers,
   Globe,
   Building2,
   HardHat,
   FolderOpen,
-  FileText,
-  Settings
-} from 'lucide-react';
+  Brain } from 'lucide-react';
 
 export const ENGINEERING_MODULES = [
   {
@@ -81,23 +78,13 @@ export const ENGINEERING_MODULES = [
     category: "Project Management",
   },
   {
-    id: "reports",
-    title: "Reports",
-    description: "Centralized repository for viewing, customizing, and printing generated reports.",
+    id: "antigravity",
+    title: "Antigravity",
+    description: "AI engineering assistant – analysis, recommendations, and chat.",
     color: "purple",
-    icon: FileText,
-    status: "coming-soon",
-    route: "/reports",
+    icon: Brain,
+    status: "ready",
+    route: "/antigravity",
     category: "Project Management",
-  },
-  {
-    id: "settings",
-    title: "Settings",
-    description: "Configure calculation safety factors, default units, and company brand logos.",
-    color: "slate",
-    icon: Settings,
-    status: "coming-soon",
-    route: "/settings",
-    category: "System",
   },
 ];

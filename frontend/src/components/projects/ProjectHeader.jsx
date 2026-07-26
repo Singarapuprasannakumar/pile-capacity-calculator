@@ -54,6 +54,7 @@ const ProjectHeader = ({ project, activeTab, onTabChange }) => {
         {[
           { id: 'overview', label: 'Overview' },
           { id: 'site-info', label: 'Site Information' },
+          { id: 'boreholes', label: 'Boreholes' },
           { id: 'calculations', label: 'Calculations History' },
           { id: 'reports', label: 'Reports Center' },
           { id: 'activities', label: 'Activity Logs' },

@@ -28,7 +28,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from pydantic import BaseModel, Field
 from schemas.sbc import SbcRequest, SbcResponse
 from calculators.sbc_calculator import calculate_sbc
-from routers import footing, soil, under_reamed, projects
+from routers import footing, soil, under_reamed, projects, boreholes
 from models.project import init_db
 
 
@@ -889,5 +889,8 @@ app.include_router(under_reamed.router)
 
 # ─── Include Projects Router ───
 app.include_router(projects.router)
+
+# ─── Include Boreholes Router ───
+app.include_router(boreholes.router)
 
 

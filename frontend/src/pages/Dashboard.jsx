@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowRight, 
   Calculator, 
-  FileText, 
   FolderOpen, 
   Activity,
   Layers3,
@@ -22,7 +21,6 @@ import { ENGINEERING_MODULES } from '../utils/constants';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [reportsCount, setReportsCount] = useState(0);
   const [recentCalcs, setRecentCalcs] = useState([]);
   const [lastInputs, setLastInputs] = useState(null);
   const [favorites, setFavorites] = useState([]);
@@ -30,8 +28,6 @@ const Dashboard = () => {
 
   useEffect(() => {
     try {
-      const count = parseInt(localStorage.getItem('reports_generated_count') || '0', 10);
-      setReportsCount(count);
 
       const recent = JSON.parse(localStorage.getItem('recent_calculations') || '[]');
       setRecentCalcs(recent);
@@ -122,12 +118,7 @@ const Dashboard = () => {
           icon={FolderOpen} 
           color="indigo" 
         />
-        <MetricCard 
-          label="Reports Generated" 
-          value={reportsCount} 
-          icon={FileText} 
-          color="green" 
-        />
+
         <MetricCard 
           label="Recent Calculations" 
           value={recentCalcs.length} 
@@ -287,13 +278,7 @@ const Dashboard = () => {
                 <Calculator className="w-5 h-5 text-blue-600 mb-1.5" />
                 <span className="text-xs font-bold text-slate-700">New Design</span>
               </Link>
-              <Link 
-                to="/reports"
-                className="flex flex-col items-center justify-center p-3 rounded-lg border border-slate-200 hover:border-blue-500 hover:bg-blue-50/30 text-center transition-all group"
-              >
-                <FileText className="w-5 h-5 text-green-600 mb-1.5" />
-                <span className="text-xs font-bold text-slate-700">Open Reports</span>
-              </Link>
+
               <Link 
                 to="/projects"
                 className="flex flex-col items-center justify-center p-3 rounded-lg border border-slate-200 hover:border-blue-500 hover:bg-blue-50/30 text-center transition-all group"
