@@ -28,7 +28,8 @@ from fastapi.openapi.docs import get_swagger_ui_html
 from pydantic import BaseModel, Field
 from schemas.sbc import SbcRequest, SbcResponse
 from calculators.sbc_calculator import calculate_sbc
-from routers import footing, soil, under_reamed
+from routers import footing, soil, under_reamed, projects
+from models.project import init_db
 
 
 # ─── Geotechnical Engineering Configuration Constants ─────────────────────────
@@ -271,6 +272,10 @@ app = FastAPI(
     docs_url=None,   # Disable default docs to override with cdnjs
     redoc_url=None,  # Disable default redoc
 )
+
+@app.on_event("startup")
+def on_startup():
+    init_db()
 
 # CORS configuration
 origins_env = os.getenv("ALLOWED_ORIGINS", "")
@@ -881,5 +886,8 @@ app.include_router(soil.router)
 
 # ─── Include Under-Reamed Router ───
 app.include_router(under_reamed.router)
+
+# ─── Include Projects Router ───
+app.include_router(projects.router)
 
 

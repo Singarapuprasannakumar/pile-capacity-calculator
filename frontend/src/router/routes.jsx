@@ -8,6 +8,8 @@ import FootingRaft from '../pages/FootingRaft';
 import SoilClassification from '../pages/SoilClassification';
 import UnderReamedPile from '../pages/UnderReamedPile';
 import Projects from '../pages/Projects';
+import CreateProject from '../pages/CreateProject';
+import ProjectWorkspace from '../pages/ProjectWorkspace';
 import Reports from '../pages/Reports';
 import Settings from '../pages/Settings';
 
@@ -22,6 +24,8 @@ const AppRoutes = () => {
         <Route path="soil-classification" element={<SoilClassification />} />
         <Route path="under-reamed-pile" element={<UnderReamedPile />} />
         <Route path="projects" element={<Projects />} />
+        <Route path="projects/new" element={<CreateProject />} />
+        <Route path="projects/:uuid" element={<ProjectWorkspace />} />
         <Route path="reports" element={<Reports />} />
         <Route path="settings" element={<Settings />} />
       </Route>

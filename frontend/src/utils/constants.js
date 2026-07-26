@@ -76,7 +76,7 @@ export const ENGINEERING_MODULES = [
     description: "Organize client files, site data, and calculation design histories.",
     color: "teal",
     icon: FolderOpen,
-    status: "coming-soon",
+    status: "ready",
     route: "/projects",
     category: "Project Management",
   },
