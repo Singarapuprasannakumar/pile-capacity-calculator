@@ -1,10 +1,13 @@
-import axios from 'axios';
+import API from './pileApi';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
+/**
+ * POST /footing/calculate
+ * @param {object} inputs
+ * @returns {Promise}
+ */
 export async function calculateFooting(inputs) {
   try {
-    const response = await axios.post(`${API_BASE_URL}/footing/calculate`, inputs);
+    const response = await API.post('/footing/calculate', inputs);
     return response.data;
   } catch (error) {
     console.error('API Error calculating footing/raft:', error);

@@ -1,10 +1,13 @@
-import axios from 'axios';
+import API from './pileApi';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-
+/**
+ * POST /soil/classify
+ * @param {object} inputs
+ * @returns {Promise}
+ */
 export async function classifySoil(inputs) {
   try {
-    const response = await axios.post(`${API_BASE_URL}/soil/classify`, inputs);
+    const response = await API.post('/soil/classify', inputs);
     return response.data;
   } catch (error) {
     console.error('API Error classifying soil:', error);

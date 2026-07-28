@@ -361,9 +361,8 @@ def root():
 @app.get("/health")
 def health():
     return {
-        "status": "healthy",
-        "service": "Pile Capacity API",
-        "version": "1.0.0"
+        "status": "ok",
+        "version": "2.3.2"
     }
 
 
