@@ -116,4 +116,13 @@ API.interceptors.response.use(
  */
 export const calculateCapacity = (payload) => API.post('/calculate', payload);
 
+/**
+ * GET /health
+ * @returns {Promise<AxiosResponse<{status: string, version: string}>>}
+ */
+export const checkHealth = async () => {
+  const response = await API.get('/health', { timeout: 5000 });
+  return response.data;
+};
+
 export default API;
