@@ -4,7 +4,10 @@ import { LayoutDashboard,
   Building2,
   HardHat,
   FolderOpen,
-  Brain } from 'lucide-react';
+  Brain,
+  Activity,
+  Ruler
+} from 'lucide-react';
 
 export const ENGINEERING_MODULES = [
   {
@@ -55,6 +58,36 @@ export const ENGINEERING_MODULES = [
     icon: HardHat,
     status: "ready",
     route: "/under-reamed-pile",
+    category: "Foundation Engineering",
+  },
+  {
+    id: "spt-soil",
+    title: "SPT Soil Property Estimator",
+    description: "Estimate soil properties based on SPT N-values.",
+    color: "slate",
+    icon: Layers,
+    status: "ready",
+    route: "/foundation/spt-soil-estimator",
+    category: "Foundation Engineering",
+  },
+  {
+    id: "adhesion-factor",
+    title: "Adhesion Factor Calculator",
+    description: "Calculate α based on Tomlinson (1957).",
+    color: "blue",
+    icon: Activity,
+    status: "ready",
+    route: "/foundation/adhesion-factor-calculator",
+    category: "Foundation Engineering",
+  },
+  {
+    id: "nq-calculator",
+    title: "Nq Calculator",
+    description: "IS:2911 Bearing Capacity Factor (Nq).",
+    color: "indigo",
+    icon: Ruler,
+    status: "ready",
+    route: "/foundation/nq-calculator",
     category: "Foundation Engineering",
   },
   {
