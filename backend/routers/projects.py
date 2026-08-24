@@ -104,3 +104,27 @@ def get_activities_route(project_uuid: str):
         return project_service.get_activities(project_uuid)
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+from schemas.project import FoundationPreferencesUpdate, FoundationPreferencesResponse
+
+@router.get("/{project_uuid}/foundation-preferences", response_model=Optional[FoundationPreferencesResponse], summary="Get persistent foundation analysis preferences")
+def get_foundation_preferences_route(project_uuid: str):
+    try:
+        prefs = project_service.get_foundation_preferences(project_uuid)
+        # If pref is None, FastAPI will safely return null (Optional typing)
+        return prefs
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+@router.put("/{project_uuid}/foundation-preferences", summary="Update foundation analysis preferences like Adhesion Factor")
+def update_foundation_preferences_route(project_uuid: str, req: FoundationPreferencesUpdate):
+    try:
+        success = project_service.update_foundation_preferences(project_uuid, req)
+        if not success:
+            raise HTTPException(status_code=400, detail="Failed to update foundation preferences")
+        return {"success": True, "message": "Foundation preferences updated successfully"}
+    except ValueError as e:
+        # If it's a validation error (value must be not none when active)
+        if "Adhesion factor cannot be active" in str(e):
+             raise HTTPException(status_code=422, detail=str(e))
+        raise HTTPException(status_code=404, detail=str(e))

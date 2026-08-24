@@ -187,5 +187,17 @@ def init_db():
     );
     """)
     
+    # 11. Create foundation preferences table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS foundation_preferences (
+        project_id INTEGER PRIMARY KEY,
+        adhesion_factor_value REAL,
+        adhesion_factor_active INTEGER DEFAULT 0,
+        adhesion_factor_source TEXT,
+        adhesion_factor_confirmed_at TEXT,
+        FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
+    );
+    """)
+    
     conn.commit()
     conn.close()

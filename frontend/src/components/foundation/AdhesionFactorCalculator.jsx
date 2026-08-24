@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { calculateAdhesionFactor } from '../../api/adhesionFactorApi';
 import AdhesionResults from './AdhesionResults';
-import { Calculator, AlertCircle, Loader2 } from 'lucide-react';
+import { Calculator, AlertCircle, Loader2, CheckCircle2, XCircle } from 'lucide-react';
 
-const AdhesionFactorCalculator = ({ initialCohesion = '' }) => {
+const AdhesionFactorCalculator = ({ 
+  initialCohesion = '',
+  projectUuid,
+  activeAlphaObj,
+  onSaveAlpha,
+  onClearAlpha,
+  preferencesLoading
+}) => {
   const [cohesion, setCohesion] = useState(initialCohesion);
   const [pileType, setPileType] = useState('concrete');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  const [savingState, setSavingState] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   useEffect(() => {
     if (initialCohesion !== '') {
@@ -39,6 +49,33 @@ const AdhesionFactorCalculator = ({ initialCohesion = '' }) => {
       setLoading(false);
     }
   };
+
+  const handleConfirmAlpha = async () => {
+    if (!result) return;
+    setSavingState(true);
+    setSaveError(null);
+    try {
+      await onSaveAlpha(result.adhesion_factor);
+    } catch (err) {
+      setSaveError("Failed to save adhesion factor to project.");
+    } finally {
+      setSavingState(false);
+    }
+  };
+
+  const handleClear = async () => {
+    setSavingState(true);
+    setSaveError(null);
+    try {
+      await onClearAlpha();
+    } catch (err) {
+      setSaveError("Failed to clear adhesion factor from project.");
+    } finally {
+      setSavingState(false);
+    }
+  };
+
+  const isActive = activeAlphaObj?.active;
 
   return (
     <div className="space-y-6">
@@ -121,6 +158,70 @@ const AdhesionFactorCalculator = ({ initialCohesion = '' }) => {
       {result && (
         <div className="bg-white border rounded-xl shadow-sm p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
            <AdhesionResults result={result} />
+           
+           {/* Adhesion Factor Selection UI */}
+           <div className="mt-8 pt-6 border-t border-slate-200">
+              <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Adhesion Factor (α) Selection</h3>
+              
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 flex flex-col sm:flex-row gap-6 items-start sm:items-center justify-between">
+                 <div>
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Calculated α</span>
+                    <span className="text-2xl font-black text-slate-900 mt-1 block">{result.adhesion_factor.toFixed(2)}</span>
+                 </div>
+
+                 <div className="flex flex-col gap-2 flex-1 items-start sm:items-center">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Status</span>
+                    {preferencesLoading ? (
+                       <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 py-1">
+                          <Loader2 className="w-4 h-4 animate-spin"/> Loading...
+                       </span>
+                    ) : isActive ? (
+                       <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-bold border border-green-200">
+                          <span className="w-2 h-2 rounded-full bg-green-500"></span> Active for Project
+                       </span>
+                    ) : (
+                       <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-200 text-slate-600 rounded-full text-sm font-bold border border-slate-300">
+                          <span className="w-2 h-2 rounded-full bg-slate-400"></span> Not selected
+                       </span>
+                    )}
+                 </div>
+
+                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                    {projectUuid ? (
+                       <>
+                        <button
+                          onClick={handleConfirmAlpha}
+                          disabled={savingState || preferencesLoading}
+                          className="flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-bold rounded-lg transition-colors flex shadow-sm"
+                        >
+                          {savingState ? <Loader2 className="w-4 h-4 animate-spin"/> : <CheckCircle2 className="w-4 h-4" />}
+                          Use This α
+                        </button>
+                        {isActive && (
+                          <button
+                            onClick={handleClear}
+                            disabled={savingState || preferencesLoading}
+                            className="flex-1 sm:flex-none items-center justify-center gap-1.5 px-4 py-2.5 bg-white border border-slate-300 hover:bg-slate-50 hover:text-red-600 text-slate-700 font-bold rounded-lg transition-colors flex shadow-sm"
+                          >
+                            <XCircle className="w-4 h-4" /> Clear
+                          </button>
+                        )}
+                       </>
+                    ) : (
+                       <span className="text-sm font-semibold text-amber-600 bg-amber-50 px-4 py-2 border border-amber-200 rounded-lg">
+                          No project selected
+                       </span>
+                    )}
+                 </div>
+              </div>
+
+              {saveError && (
+                 <div className="mt-4 p-3 bg-red-50 text-red-700 border border-red-200 rounded-lg flex gap-2 text-sm">
+                    <AlertCircle className="w-4 h-4 mt-0.5" />
+                    {saveError}
+                 </div>
+              )}
+           </div>
         </div>
       )}
     </div>

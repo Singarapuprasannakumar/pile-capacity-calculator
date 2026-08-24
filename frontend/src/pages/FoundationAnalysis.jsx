@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import SptSoilCalculator from '../components/foundation/SptSoilCalculator';
 import AdhesionFactorCalculator from '../components/foundation/AdhesionFactorCalculator';
 import NqCalculator from '../components/foundation/NqCalculator';
 import { Layers, Activity, Ruler } from 'lucide-react';
+import { getFoundationPreferences, setAdhesionFactor, clearAdhesionFactor } from '../api/foundationPreferencesApi';
 
 const TABS = [
   { id: 'spt', label: 'SPT SOIL', icon: Layers },
@@ -11,11 +13,32 @@ const TABS = [
 ];
 
 const FoundationAnalysis = () => {
+  const [searchParams] = useSearchParams();
+  const projectUuid = searchParams.get('project');
+
   const [activeTab, setActiveTab] = useState('spt');
   
   // Shared state for engineering parameters summary and cross-panel population
   const [sharedCohesion, setSharedCohesion] = useState('');
   const [sharedPhi, setSharedPhi] = useState('');
+  
+  // Project-level foundation preferences
+  const [projectPreferences, setProjectPreferences] = useState(null);
+  const [preferencesLoading, setPreferencesLoading] = useState(false);
+
+  useEffect(() => {
+    if (projectUuid) {
+      setPreferencesLoading(true);
+      getFoundationPreferences(projectUuid)
+        .then(data => {
+          setProjectPreferences(data);
+        })
+        .catch(err => console.error("Failed to load preferences", err))
+        .finally(() => setPreferencesLoading(false));
+    } else {
+      setProjectPreferences(null);
+    }
+  }, [projectUuid]);
 
   const handleTransferCohesion = (cohesion) => {
     setSharedCohesion(cohesion);
@@ -27,6 +50,32 @@ const FoundationAnalysis = () => {
     setActiveTab('nq');
   };
 
+  const handleSaveAlpha = async (alphaValue) => {
+    if (!projectUuid) return;
+    try {
+      const updatedPrefs = await setAdhesionFactor(projectUuid, alphaValue, 'foundation-analysis');
+      setProjectPreferences(updatedPrefs);
+    } catch (err) {
+      console.error("Failed to save alpha", err);
+      throw err;
+    }
+  };
+
+  const handleClearAlpha = async () => {
+    if (!projectUuid) return;
+    try {
+      const updatedPrefs = await clearAdhesionFactor(projectUuid);
+      setProjectPreferences(updatedPrefs);
+    } catch (err) {
+      console.error("Failed to clear alpha", err);
+      throw err;
+    }
+  };
+
+  const activeAlphaObj = projectPreferences?.adhesion_factor_active 
+    ? { value: projectPreferences.adhesion_factor_value, active: true } 
+    : { value: null, active: false };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in duration-300">
       
@@ -36,7 +85,18 @@ const FoundationAnalysis = () => {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight leading-none uppercase">
             Foundation Analysis
           </h1>
-          <p className="text-sm text-slate-500 font-medium mt-1">Foundation Engineering Analysis & Soil Parameters</p>
+          <p className="text-sm text-slate-500 font-medium mt-1 flex items-center gap-2">
+            Foundation Engineering Analysis & Soil Parameters
+            {projectUuid ? (
+              <span className="bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full text-xs border border-blue-100 font-semibold">
+                Project Bound
+              </span>
+            ) : (
+              <span className="bg-amber-50 text-amber-700 px-2.5 py-0.5 rounded-full text-xs border border-amber-100 font-semibold">
+                No project selected
+              </span>
+            )}
+          </p>
         </div>
       </div>
 
@@ -76,7 +136,14 @@ const FoundationAnalysis = () => {
             )}
             
             {activeTab === 'adhesion' && (
-              <AdhesionFactorCalculator initialCohesion={sharedCohesion} />
+              <AdhesionFactorCalculator 
+                initialCohesion={sharedCohesion}
+                projectUuid={projectUuid}
+                activeAlphaObj={activeAlphaObj}
+                onSaveAlpha={handleSaveAlpha}
+                onClearAlpha={handleClearAlpha} 
+                preferencesLoading={preferencesLoading}
+              />
             )}
             
             {activeTab === 'nq' && (
@@ -101,11 +168,17 @@ const FoundationAnalysis = () => {
                 <span className="text-slate-600 font-medium">Internal Friction (φ)</span>
                 <span className="font-semibold text-slate-900">{sharedPhi !== '' ? `${sharedPhi}°` : '—'}</span>
               </div>
+              <div className="flex justify-between items-center py-1 border-b border-slate-100 last:border-0">
+                <span className="text-slate-600 font-medium">Global Project α</span>
+                <span className="font-semibold text-slate-900">
+                  {activeAlphaObj.active ? activeAlphaObj.value.toFixed(2) : <span className="text-slate-400 font-normal">Inactive</span>}
+                </span>
+              </div>
             </div>
 
             <div className="mt-8 pt-4 border-t border-slate-200">
               <p className="text-xs text-slate-500 leading-relaxed">
-                <strong>Note:</strong> Values appear here when transferred from the SPT properties estimator. Click on the action buttons inside the SPT results to populate these fields automatically.
+                <strong>Note:</strong> Values appear here when transferred from the SPT properties estimator or persisted as global project parameters.
               </p>
             </div>
           </div>

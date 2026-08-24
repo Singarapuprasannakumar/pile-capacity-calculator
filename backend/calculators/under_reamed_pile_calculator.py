@@ -21,7 +21,7 @@ def calculate_under_reamed_pile(req: UnderReamedRequest) -> UnderReamedResponse:
 
     AB_dash = math.pi * Du * L1
 
-    alpha = 0.5
+    alpha = req.alpha if req.alpha is not None else 0.5
 
     l = max(2 * Du, 1.75)
     l2 = l - 2 * D

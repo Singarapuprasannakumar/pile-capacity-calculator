@@ -98,3 +98,29 @@ def delete_report(project_uuid, report_id):
 
 def get_activities(project_uuid):
     return project_repository.get_activities(project_uuid)
+
+def get_foundation_preferences(project_uuid):
+    # Verify project exists
+    get_project(project_uuid)
+    return project_repository.get_foundation_preferences(project_uuid)
+
+def update_foundation_preferences(project_uuid, prefs):
+    curr = get_project(project_uuid)
+    
+    # Validation logic according to requirement:
+    val = prefs.adhesion_factor.value
+    active = prefs.adhesion_factor.active
+    
+    if active and val is None:
+        raise ValueError("Adhesion factor cannot be active without a numeric value.")
+        
+    success = project_repository.update_foundation_preferences(project_uuid, prefs)
+    if success:
+        stat_str = f"Active, α={val}" if active else "Inactive"
+        project_repository.log_activity(
+            curr['id'],
+            'updated_preferences',
+            f"Updated Foundation Preferences. Adhesion Factor: {stat_str}."
+        )
+    return success
+

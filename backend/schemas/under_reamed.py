@@ -7,6 +7,7 @@ class UnderReamedRequest(BaseModel):
     Cp: float = Field(..., ge=0.0, description="Cohesion at Pile Tip, Cp (kPa)")
     Ca_dash: float = Field(..., ge=0.0, description="Cohesion at Bulb Level, Ca' (kPa)")
     Ca: float = Field(..., ge=0.0, description="Cohesion Along Stem, Ca (kPa)")
+    alpha: float | None = Field(None, description="Global Alpha / Adhesion Factor override")
 
 class UnderReamedGeometry(BaseModel):
     Du: float = Field(..., description="Under-Ream Diameter (m)")

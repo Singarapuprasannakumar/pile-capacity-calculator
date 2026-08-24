@@ -15,10 +15,10 @@ const ResultsTable = lazy(() => import('./ResultsTable'));
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
 
-const defaultLayer = () => ({
+const defaultLayer = (globalAlpha = null) => ({
   soilType: '',
   thickness: '',
-  alpha: 0.8, cohesion: '',           // clay
+  alpha: globalAlpha !== null ? globalAlpha : 0.8, cohesion: '',           // clay
   K: '', phi: '',                    // sand (both L/D)
   ovTop: '', ovBottom: '',           // sand L/D < 15
   bulkUnit: '', waterTableDepth: '', submergedUnit: '',  // sand L/D >= 15
@@ -115,8 +115,22 @@ export default function PileCalculator() {
   const [alert,   setAlert]   = useState(null);
   const [pdfLoading, setPdfLoading] = useState(false);
 
+  const [globalAlpha, setGlobalAlpha] = useState(null);
+
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
+    const searchParams = new window.URLSearchParams(window.location.search);
+    const projectUuid = searchParams.get('project');
+    
+    if (projectUuid) {
+      import('../../api/foundationPreferencesApi').then(({ getFoundationPreferences }) => {
+        getFoundationPreferences(projectUuid).then(prefs => {
+          if (prefs?.adhesion_factor_active) {
+            setGlobalAlpha(prefs.adhesion_factor_value);
+          }
+        }).catch(console.error);
+      });
+    }
+
     if (searchParams.get('resume') === 'true') {
       try {
         const stored = localStorage.getItem('last_pile_calculation_inputs');
@@ -146,7 +160,7 @@ export default function PileCalculator() {
     if (!isNaN(n) && n >= 1 && n <= 20) {
       setLayers((prev) => {
         const next = [...prev];
-        while (next.length < n) next.push(defaultLayer());
+        while (next.length < n) next.push(defaultLayer(globalAlpha));
         next.length = n;
         return next;
       });
@@ -179,7 +193,7 @@ export default function PileCalculator() {
       if (layer.soilType === 'clay') {
         const val = layer.alpha;
         if (val === '' || val === undefined || val === null) {
-          return { ...layer, alpha: 0.8 };
+          return { ...layer, alpha: globalAlpha !== null ? globalAlpha : 0.8 };
         }
       }
       return layer;

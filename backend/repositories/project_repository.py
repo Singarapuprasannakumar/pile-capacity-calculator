@@ -330,3 +330,47 @@ def get_activities(project_uuid):
         return [dict(row) for row in rows]
     finally:
         conn.close()
+
+def get_foundation_preferences(project_uuid):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        project_id = get_id_from_uuid(cursor, project_uuid)
+        cursor.execute("SELECT * FROM foundation_preferences WHERE project_id = ?", (project_id,))
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
+        return None
+    finally:
+        conn.close()
+
+def update_foundation_preferences(project_uuid, prefs_update):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        now = datetime.datetime.now().isoformat()
+        project_id = get_id_from_uuid(cursor, project_uuid)
+        
+        pref = prefs_update.adhesion_factor
+        val = pref.value
+        active = 1 if pref.active else 0
+        src = pref.source
+        
+        cursor.execute("""
+        INSERT OR REPLACE INTO foundation_preferences (
+            project_id, adhesion_factor_value, adhesion_factor_active, 
+            adhesion_factor_source, adhesion_factor_confirmed_at
+        ) VALUES (?, ?, ?, ?, ?)
+        """, (project_id, val, active, src, now))
+        
+        # Also update project modified_at
+        cursor.execute("UPDATE projects SET modified_at = ? WHERE id = ?", (now, project_id))
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+

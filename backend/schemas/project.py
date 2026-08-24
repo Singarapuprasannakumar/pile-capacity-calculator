@@ -31,6 +31,21 @@ class SiteInfoUpdate(BaseModel):
     elevation: Optional[float] = None
     site_notes: Optional[str] = None
 
+class AdhesionFactorPref(BaseModel):
+    value: Optional[float] = None
+    active: bool = False
+    source: Optional[str] = None
+
+class FoundationPreferencesUpdate(BaseModel):
+    adhesion_factor: AdhesionFactorPref
+
+class FoundationPreferencesResponse(BaseModel):
+    project_id: int
+    adhesion_factor_value: Optional[float] = None
+    adhesion_factor_active: bool = False
+    adhesion_factor_source: Optional[str] = None
+    adhesion_factor_confirmed_at: Optional[str] = None
+
 class CalculationSave(BaseModel):
     module: str = Field(..., description="Geotechnical module name")
     calculation_name: str = Field(..., description="Custom name for the calculation trial")

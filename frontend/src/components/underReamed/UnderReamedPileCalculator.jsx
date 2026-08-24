@@ -28,9 +28,23 @@ export default function UnderReamedPileCalculator() {
   const [compareMode, setCompareMode] = useState(false);
   const [alert, setAlert] = useState(null);
 
+  const [globalAlpha, setGlobalAlpha] = useState(null);
+
   // Resume last session if url contains ?resume=true
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new window.URLSearchParams(window.location.search);
+    const projectUuid = params.get('project');
+    
+    if (projectUuid) {
+      import('../../api/foundationPreferencesApi').then(({ getFoundationPreferences }) => {
+        getFoundationPreferences(projectUuid).then(prefs => {
+          if (prefs?.adhesion_factor_active) {
+            setGlobalAlpha(prefs.adhesion_factor_value);
+          }
+        }).catch(console.error);
+      });
+    }
+
     if (params.get('resume') === 'true') {
       try {
         const stored = localStorage.getItem('last_under_reamed_inputs');
@@ -115,6 +129,10 @@ export default function UnderReamedPileCalculator() {
         Ca_dash: parseFloat(inputs.Ca_dash),
         Ca: parseFloat(inputs.Ca)
       };
+      
+      if (globalAlpha !== null) {
+        payload.alpha = globalAlpha;
+      }
 
       const resData = await calculateUnderReamedPile(payload);
 
@@ -262,6 +280,19 @@ export default function UnderReamedPileCalculator() {
         
         {/* Left Side: Input Form & Results */}
         <div className="space-y-6 w-full lg:col-span-8 min-w-0">
+          
+          {globalAlpha !== null && (
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl flex items-start gap-3 w-full no-print">
+              <Info className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+              <div>
+                <h4 className="text-sm font-bold text-blue-800">Project Adhesion Factor Active</h4>
+                <p className="text-sm text-blue-700 mt-1">
+                  A global adhesion factor of <strong>α = {globalAlpha.toFixed(2)}</strong> has been fetched from your Foundation Analysis preferences. This will override the default α=0.5 during capacity calculations.
+                </p>
+              </div>
+            </div>
+          )}
+
           <Card title="Under-Reamed Pile Design Parameters (IS 2911 Part 3)">
             <UnderReamedPileForm
               values={inputs}
