@@ -55,7 +55,7 @@ const AdhesionFactorCalculator = ({
     setSavingState(true);
     setSaveError(null);
     try {
-      await onSaveAlpha(result.adhesion_factor);
+      await onSaveAlpha(result.alpha);
     } catch (err) {
       setSaveError("Failed to save adhesion factor to project.");
     } finally {

@@ -3,10 +3,18 @@ import { NavLink, useLocation } from 'react-router-dom';
 
 const NavigationItem = ({ to, icon: Icon, title, status, onClick }) => {
   const location = useLocation();
+  
+  let searchParams = location.search;
+  if (!searchParams && location.pathname.startsWith('/projects/')) {
+    const parts = location.pathname.split('/');
+    if (parts.length >= 3 && parts[2] !== 'new') {
+      searchParams = `?project=${parts[2]}`;
+    }
+  }
 
   return (
     <NavLink
-      to={`${to}${location.search}`}
+      to={`${to}${searchParams}`}
       onClick={onClick}
       className={({ isActive }) =>
         `flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group ${
