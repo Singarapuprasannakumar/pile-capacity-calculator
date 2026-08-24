@@ -1,13 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { calculateNq } from '../../api/nqApi';
 import NqResults from './NqResults';
 import { Calculator, AlertCircle, Loader2 } from 'lucide-react';
 
-const NqCalculator = () => {
-  const [phi, setPhi] = useState('');
+const NqCalculator = ({ initialPhi = '' }) => {
+  const [phi, setPhi] = useState(initialPhi);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (initialPhi !== '') {
+      setPhi(initialPhi);
+      if (error) setError(null);
+    }
+  }, [initialPhi]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

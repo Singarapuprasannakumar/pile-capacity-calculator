@@ -1,6 +1,6 @@
 import React from 'react';
 
-const SptResultsTable = ({ result }) => {
+const SptResultsTable = ({ result, onTransferPhi, onTransferCohesion }) => {
   if (!result || !result.data) return null;
   const { data } = result;
 
@@ -37,6 +37,18 @@ const SptResultsTable = ({ result }) => {
             <span className="font-medium">{data.recommendation}</span>
           </div>
         </div>
+        
+        {onTransferCohesion && (
+          <div className="pt-2">
+            <button 
+              type="button"
+              onClick={() => onTransferCohesion(data.cohesion)} 
+              className="text-sm px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 font-semibold rounded-md hover:bg-blue-100 transition-colors shadow-sm"
+            >
+              Use Cohesion in Adhesion Calculator
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -98,6 +110,18 @@ const SptResultsTable = ({ result }) => {
           <span className="font-medium">{data.recommendation}</span>
         </div>
       </div>
+
+      {onTransferPhi && (
+        <div className="pt-2">
+          <button 
+            type="button"
+            onClick={() => onTransferPhi(data.conservativePhi)} 
+            className="text-sm px-4 py-2 bg-blue-50 border border-blue-200 text-blue-700 font-semibold rounded-md hover:bg-blue-100 transition-colors shadow-sm"
+          >
+            Use Conservative φ in Nq Calculator
+          </button>
+        </div>
+      )}
     </div>
   );
 };

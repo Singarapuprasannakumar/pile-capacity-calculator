@@ -1,14 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { calculateAdhesionFactor } from '../../api/adhesionFactorApi';
 import AdhesionResults from './AdhesionResults';
 import { Calculator, AlertCircle, Loader2 } from 'lucide-react';
 
-const AdhesionFactorCalculator = () => {
-  const [cohesion, setCohesion] = useState('');
+const AdhesionFactorCalculator = ({ initialCohesion = '' }) => {
+  const [cohesion, setCohesion] = useState(initialCohesion);
   const [pileType, setPileType] = useState('concrete');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (initialCohesion !== '') {
+      setCohesion(initialCohesion);
+      if (error) setError(null);
+    }
+  }, [initialCohesion]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

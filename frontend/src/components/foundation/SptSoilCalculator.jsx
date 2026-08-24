@@ -3,7 +3,7 @@ import { calculateSptSoil } from '../../api/sptSoilApi';
 import SptResultsTable from './SptResultsTable';
 import { Calculator, AlertCircle, Loader2 } from 'lucide-react';
 
-const SptSoilCalculator = () => {
+const SptSoilCalculator = ({ onTransferPhi, onTransferCohesion }) => {
   const [soilType, setSoilType] = useState('clay');
   const [nValue, setNValue] = useState('');
   const [result, setResult] = useState(null);
@@ -110,7 +110,11 @@ const SptSoilCalculator = () => {
 
       {result && (
         <div className="bg-white border rounded-xl shadow-sm p-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-           <SptResultsTable result={result} />
+           <SptResultsTable 
+              result={result} 
+              onTransferPhi={onTransferPhi}
+              onTransferCohesion={onTransferCohesion}
+           />
         </div>
       )}
     </div>

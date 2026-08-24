@@ -7,7 +7,7 @@ import SBC6403 from '../pages/SBC6403';
 import FootingRaft from '../pages/FootingRaft';
 import SoilClassification from '../pages/SoilClassification';
 import UnderReamedPile from '../pages/UnderReamedPile';
-import FoundationTools from '../pages/FoundationTools';
+import FoundationAnalysis from '../pages/FoundationAnalysis';
 import Projects from '../pages/Projects';
 import CreateProject from '../pages/CreateProject';
 import ProjectWorkspace from '../pages/ProjectWorkspace';
@@ -24,7 +24,7 @@ const AppRoutes = () => {
         <Route path="footing-raft" element={<FootingRaft />} />
         <Route path="soil-classification" element={<SoilClassification />} />
         <Route path="under-reamed-pile" element={<UnderReamedPile />} />
-        <Route path="foundation/:toolId" element={<FoundationTools />} />
+        <Route path="foundation-analysis" element={<FoundationAnalysis />} />
         <Route path="projects" element={<Projects />} />
         <Route path="projects/new" element={<CreateProject />} />
         <Route path="projects/:uuid" element={<ProjectWorkspace />} />
