@@ -1,10 +1,12 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 
 const NavigationItem = ({ to, icon: Icon, title, status, onClick }) => {
+  const location = useLocation();
+
   return (
     <NavLink
-      to={to}
+      to={`${to}${location.search}`}
       onClick={onClick}
       className={({ isActive }) =>
         `flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group ${

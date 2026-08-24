@@ -32,7 +32,7 @@ class SiteInfoUpdate(BaseModel):
     site_notes: Optional[str] = None
 
 class AdhesionFactorPref(BaseModel):
-    value: Optional[float] = None
+    value: Optional[float] = Field(None, ge=0.0, le=1.0, description="Adhesion factor must be between 0 and 1")
     active: bool = False
     source: Optional[str] = None
 
