@@ -166,7 +166,7 @@ const AdhesionFactorCalculator = ({
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 flex flex-col sm:flex-row gap-6 items-start sm:items-center justify-between">
                  <div>
                     <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Calculated α</span>
-                    <span className="text-2xl font-black text-slate-900 mt-1 block">{result.adhesion_factor.toFixed(2)}</span>
+                    <span className="text-2xl font-black text-slate-900 mt-1 block">{(result.alpha || 0).toFixed(2)}</span>
                  </div>
 
                  <div className="flex flex-col gap-2 flex-1 items-start sm:items-center">
